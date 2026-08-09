@@ -92,4 +92,5 @@ export interface WorkoutInput {
 export interface AppSettings {
   theme: 'light' | 'dark' | 'system';
   units: 'metric' | 'imperial';
+  syncEnabled: boolean;
 }

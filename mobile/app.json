@@ -2,6 +2,9 @@
   "expo": {
     "name": "lif.os",
     "slug": "lif-os",
+    "platforms": [
+      "android"
+    ],
     "version": "0.1.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -19,7 +22,8 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.devendrasai.lifos"
     },
     "web": {
       "output": "static",

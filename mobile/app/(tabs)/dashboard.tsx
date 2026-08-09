@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { Button, Card, Modal, Portal, SegmentedButtons, Text, TextInput, useTheme } from 'react-native-paper';
+import { Button, Card, HelperText, Modal, Portal, SegmentedButtons, Text, TextInput, useTheme } from 'react-native-paper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
 
 import { Screen } from '@/components/Screen';
@@ -13,6 +14,9 @@ import { DateField } from '@/components/DateField';
 import { computeAlerts, shortDate, todayStr } from '@/constants/metrics';
 import { useDataStore } from '@/stores/data';
 import { upsertDailyMetrics } from '@/services/metrics-service';
+import { calculateRecoveryScore, generateInsights } from '@/services/ai-engine';
+import { useSettingsStore } from '@/stores/settings';
+import { syncLatest } from '@/services/sync-manager';
 import type { DailyMetrics, DailyMetricsInput } from '@/types';
 
 type ChartKey = 'recovery' | 'weight' | 'steps';
@@ -22,11 +26,23 @@ export default function DashboardScreen() {
   const loadDashboard = useDataStore((s) => s.loadDashboard);
   const metrics = useDataStore((s) => s.metrics);
   const bloodTests = useDataStore((s) => s.bloodTests);
+  const workouts = useDataStore((s) => s.workouts);
   const foodByDate = useDataStore((s) => s.foodByDate);
   const caloriesByDate = useDataStore((s) => s.caloriesByDate);
 
   const [showMetrics, setShowMetrics] = useState(false);
   const [chart, setChart] = useState<ChartKey>('recovery');
+  const syncEnabled = useSettingsStore((s) => s.syncEnabled);
+
+  const syncIfEnabled = useCallback(async () => {
+    if (syncEnabled) {
+      try {
+        await syncLatest();
+      } catch (e) {
+        console.error('Sync failed:', e);
+      }
+    }
+  }, [syncEnabled]);
 
   useFocusEffect(
     useCallback(() => {
@@ -41,6 +57,8 @@ export default function DashboardScreen() {
   const alerts = computeAlerts(
     bloodTests.map((t) => ({ testType: t.testType, value: t.value, unit: t.unit })),
   );
+
+  const insights = generateInsights({ metrics, workouts });
 
   const chartData = (key: ChartKey) => {
     return metrics
@@ -128,6 +146,50 @@ export default function DashboardScreen() {
         <AlertBanner alerts={alerts} />
       </View>
 
+      {insights.length > 0 ? (
+        <View style={styles.alerts}>
+          <Text variant="titleMedium" style={{ color: theme.colors.onSurface }}>
+            Insights
+          </Text>
+          <View style={styles.insightList}>
+            {insights.map((insight, i) => {
+              const color =
+                insight.level === 'positive'
+                  ? '#2E7D32'
+                  : insight.level === 'warning'
+                    ? '#EF6C00'
+                    : '#2F6FED';
+              const icon =
+                insight.level === 'positive'
+                  ? 'trending-up'
+                  : insight.level === 'warning'
+                    ? 'alert'
+                    : 'information-outline';
+              return (
+                <Card
+                  key={i}
+                  style={[
+                    styles.insightCard,
+                    { backgroundColor: theme.colors.surface, borderLeftColor: color },
+                  ]}>
+                  <Card.Content style={styles.insightContent}>
+                    <MaterialCommunityIcons name={icon} size={20} color={color} />
+                    <View style={styles.insightText}>
+                      <Text variant="labelLarge" style={{ color: theme.colors.onSurface }}>
+                        {insight.title}
+                      </Text>
+                      <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
+                        {insight.message}
+                      </Text>
+                    </View>
+                  </Card.Content>
+                </Card>
+              );
+            })}
+          </View>
+        </View>
+      ) : null}
+
       <Portal>
         <EditDailyMetricsModal
           visible={showMetrics}
@@ -136,6 +198,7 @@ export default function DashboardScreen() {
           onSaved={() => {
             setShowMetrics(false);
             loadDashboard();
+            syncIfEnabled();
           }}
         />
       </Portal>
@@ -161,6 +224,7 @@ function EditDailyMetricsModal({ visible, onDismiss, initial, onSaved }: EditDai
   const [recovery, setRecovery] = useState('');
   const [notes, setNotes] = useState('');
   const [busy, setBusy] = useState(false);
+  const [autoRecovery, setAutoRecovery] = useState<number | null>(null);
 
   useEffect(() => {
     if (visible) {
@@ -172,19 +236,40 @@ function EditDailyMetricsModal({ visible, onDismiss, initial, onSaved }: EditDai
       setWeight(initial?.weight != null ? String(initial.weight) : '');
       setRecovery(initial?.recoveryScore != null ? String(initial.recoveryScore) : '');
       setNotes(initial?.notes ?? '');
+      setAutoRecovery(null);
     }
   }, [visible, initial]);
 
-  const save = async () => {
-    setBusy(true);
-    const input: DailyMetricsInput = {
-      date,
-      heartRate: heartRate ? Number(heartRate) : null,
-      steps: steps ? Number(steps) : null,
+  useEffect(() => {
+    if (recovery) {
+      setAutoRecovery(null);
+      return;
+    }
+    const computed = calculateRecoveryScore({
       sleepHours: sleep ? Number(sleep) : null,
       stress: stress ? Number(stress) : null,
+      heartRate: heartRate ? Number(heartRate) : null,
+    });
+    setAutoRecovery(computed);
+  }, [recovery, sleep, stress, heartRate]);
+
+  const save = async () => {
+    setBusy(true);
+    const heartRateValue = heartRate ? Number(heartRate) : null;
+    const sleepHours = sleep ? Number(sleep) : null;
+    const stressNum = stress ? Number(stress) : null;
+    const manualRecovery = recovery ? Math.max(0, Math.min(100, Number(recovery))) : null;
+    const recoveryScore =
+      manualRecovery ??
+      calculateRecoveryScore({ sleepHours, stress: stressNum, heartRate: heartRateValue });
+    const input: DailyMetricsInput = {
+      date,
+      heartRate: heartRateValue,
+      steps: steps ? Number(steps) : null,
+      sleepHours,
+      stress: stressNum,
       weight: weight ? Number(weight) : null,
-      recoveryScore: recovery ? Math.max(0, Math.min(100, Number(recovery))) : null,
+      recoveryScore,
       notes: notes || null,
     };
     await upsertDailyMetrics(input);
@@ -204,6 +289,9 @@ function EditDailyMetricsModal({ visible, onDismiss, initial, onSaved }: EditDai
       <NumberField label="Weight (kg)" value={weight} onChange={setWeight} decimal />
       <NumberField label="Stress (1-10)" value={stress} onChange={setStress} />
       <NumberField label="Recovery score (0-100)" value={recovery} onChange={setRecovery} />
+      {autoRecovery != null ? (
+        <HelperText type="info">Auto-calculated from sleep, stress and HR: {autoRecovery}</HelperText>
+      ) : null}
       <TextInput
         mode="outlined"
         label="Notes"
@@ -231,6 +319,10 @@ const styles = StyleSheet.create({
   chartSection: { marginTop: 20 },
   chartHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, gap: 8 },
   alerts: { marginTop: 20 },
+  insightList: { gap: 8 },
+  insightCard: { borderRadius: 14, borderLeftWidth: 4, elevation: 1 },
+  insightContent: { flexDirection: 'row', alignItems: 'flex-start', paddingVertical: 10 },
+  insightText: { flex: 1, marginLeft: 10 },
   modal: {
     margin: 24,
     borderRadius: 18,

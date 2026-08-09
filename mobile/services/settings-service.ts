@@ -4,6 +4,7 @@ import type { AppSettings } from '@/types';
 const DEFAULTS: AppSettings = {
   theme: 'system',
   units: 'metric',
+  syncEnabled: false,
 };
 
 export async function getSetting(key: keyof AppSettings): Promise<string | null> {
@@ -32,5 +33,9 @@ export async function getSettings(): Promise<AppSettings> {
   for (const row of rows) map[row.key] = row.value;
   const theme = (map.theme as AppSettings['theme']) ?? DEFAULTS.theme;
   const units = (map.units as AppSettings['units']) ?? DEFAULTS.units;
-  return { theme: ['light', 'dark', 'system'].includes(theme) ? theme : DEFAULTS.theme, units: units === 'imperial' ? 'imperial' : 'metric' };
+  return {
+    theme: ['light', 'dark', 'system'].includes(theme) ? theme : DEFAULTS.theme,
+    units: units === 'imperial' ? 'imperial' : 'metric',
+    syncEnabled: map.syncEnabled === 'true',
+  };
 }

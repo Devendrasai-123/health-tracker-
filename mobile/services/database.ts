@@ -67,6 +67,15 @@ const MIGRATIONS: string[] = [
     key TEXT PRIMARY KEY,
     value TEXT
   );
+
+  CREATE TABLE IF NOT EXISTS sync_queue (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    payload TEXT NOT NULL,
+    kind TEXT NOT NULL DEFAULT 'daily_summary',
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_sync_queue_created ON sync_queue (created_at);
   `,
 ];
 
@@ -103,6 +112,7 @@ export async function resetDatabase(): Promise<void> {
     DROP TABLE IF EXISTS food_log;
     DROP TABLE IF EXISTS workouts;
     DROP TABLE IF EXISTS settings;
+    DROP TABLE IF EXISTS sync_queue;
   `);
   await fresh.closeAsync();
   db = null;
