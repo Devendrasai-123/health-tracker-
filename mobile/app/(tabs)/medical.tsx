@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Image, ScrollView, StyleSheet, View } from 'react-native';
 import {
   Button,
@@ -7,6 +7,7 @@ import {
   HelperText,
   Modal,
   Portal,
+  Searchbar,
   Text,
   TextInput,
   useTheme,
@@ -22,8 +23,10 @@ import { EmptyState } from '@/components/EmptyState';
 import { DateField } from '@/components/DateField';
 import { NumberField } from '@/components/NumberField';
 import { computeAlerts, formatDate, getTestTypeDef, shortDate, TEST_TYPES, todayStr } from '@/constants/metrics';
+import { matchesSearch } from '@/utils/helpers';
 import { useDataStore } from '@/stores/data';
-import { addBloodTest, deleteBloodTest, listBloodTestsByType } from '@/services/blood-test-service';
+import { addBloodTest, deleteBloodTest, listBloodTestsByType, updateBloodTest } from '@/services/blood-test-service';
+import { palette } from '@/constants/theme';
 import type { BloodTest, BloodTestInput } from '@/types';
 
 export default function MedicalScreen() {
@@ -32,6 +35,8 @@ export default function MedicalScreen() {
   const reloadBloodTests = useDataStore((s) => s.reloadBloodTests);
 
   const [showAdd, setShowAdd] = useState(false);
+  const [editing, setEditing] = useState<BloodTest | null>(null);
+  const [query, setQuery] = useState('');
   const [selectedType, setSelectedType] = useState<string>(TEST_TYPES[0].label);
   const [typeData, setTypeData] = useState<BloodTest[]>([]);
 
@@ -44,6 +49,18 @@ export default function MedicalScreen() {
   useEffect(() => {
     listBloodTestsByType(selectedType).then(setTypeData).catch(() => setTypeData([]));
   }, [selectedType]);
+
+  const filtered = useMemo(
+    () =>
+      bloodTests.filter(
+        (t) =>
+          matchesSearch(t.testType, query) ||
+          matchesSearch(t.date, query) ||
+          matchesSearch(String(t.value), query) ||
+          matchesSearch(t.notes ?? '', query),
+      ),
+    [bloodTests, query],
+  );
 
   const alerts = computeAlerts(
     bloodTests.map((t) => ({ testType: t.testType, value: t.value, unit: t.unit })),
@@ -62,13 +79,29 @@ export default function MedicalScreen() {
 
   return (
     <Screen
-      title="Medical"
-      subtitle="Blood tests · encrypted at rest"
+      title="Blood Tests"
+      subtitle="Encrypted at rest"
       action={
-        <Button mode="contained" compact onPress={() => setShowAdd(true)}>
+        <Button
+          mode="contained"
+          compact
+          buttonColor={palette.vermillion}
+          textColor="#fff"
+          style={{ borderRadius: 999 }}
+          onPress={() => {
+            setEditing(null);
+            setShowAdd(true);
+          }}>
           Add test
         </Button>
       }>
+      <Searchbar
+        placeholder="Search by type, date, or value"
+        value={query}
+        onChangeText={setQuery}
+        style={styles.search}
+      />
+
       <AlertBanner alerts={alerts} />
 
       <View style={styles.section}>
@@ -95,7 +128,7 @@ export default function MedicalScreen() {
         </ScrollView>
         <TrendChart
           data={typeData.map((t) => ({ value: t.value, label: shortDate(t.date) }))}
-          color={theme.colors.secondary}
+          color={palette.vermillion}
           yLabelSuffix={typeData[0] ? ` ${typeData[0].unit}` : ''}
           area
         />
@@ -105,16 +138,26 @@ export default function MedicalScreen() {
         <Text variant="titleMedium" style={{ color: theme.colors.onSurface }}>
           History
         </Text>
-        {bloodTests.length === 0 ? (
+        {filtered.length === 0 ? (
           <EmptyState
             icon="flask-outline"
-            title="No blood tests yet"
-            message="Log your first lab result — values are encrypted before they touch the database."
+            title={query ? 'No matching tests' : 'No blood tests yet'}
+            message={
+              query
+                ? 'Try a different search.'
+                : 'Log your first lab result — values are encrypted before they touch the database.'
+            }
           />
         ) : (
           <View style={styles.list}>
-            {bloodTests.map((t) => (
-              <Card key={t.id} style={[styles.item, { backgroundColor: theme.colors.surface }]}>
+            {filtered.map((t) => (
+              <Card
+                key={t.id}
+                style={[styles.item, { backgroundColor: theme.colors.surface }]}
+                onPress={() => {
+                  setEditing(t);
+                  setShowAdd(true);
+                }}>
                 <Card.Content style={styles.itemContent}>
                   <View style={[styles.itemIcon, { backgroundColor: theme.colors.primary + '22' }]}>
                     <MaterialCommunityIcons name="needle" size={20} color={theme.colors.primary} />
@@ -150,9 +193,14 @@ export default function MedicalScreen() {
       <Portal>
         <AddBloodTestModal
           visible={showAdd}
-          onDismiss={() => setShowAdd(false)}
+          initial={editing}
+          onDismiss={() => {
+            setShowAdd(false);
+            setEditing(null);
+          }}
           onSaved={() => {
             setShowAdd(false);
+            setEditing(null);
             reloadBloodTests();
             listBloodTestsByType(selectedType).then(setTypeData);
           }}
@@ -164,11 +212,12 @@ export default function MedicalScreen() {
 
 interface AddBloodTestModalProps {
   visible: boolean;
+  initial: BloodTest | null;
   onDismiss: () => void;
   onSaved: () => void;
 }
 
-function AddBloodTestModal({ visible, onDismiss, onSaved }: AddBloodTestModalProps) {
+function AddBloodTestModal({ visible, initial, onDismiss, onSaved }: AddBloodTestModalProps) {
   const theme = useTheme();
   const [date, setDate] = useState(todayStr());
   const [testType, setTestType] = useState(TEST_TYPES[0].label);
@@ -181,18 +230,29 @@ function AddBloodTestModal({ visible, onDismiss, onSaved }: AddBloodTestModalPro
 
   useEffect(() => {
     if (visible) {
-      setDate(todayStr());
-      setValue('');
-      setNotes('');
-      setPhotoUri(null);
+      if (initial) {
+        setDate(initial.date);
+        setTestType(initial.testType);
+        setValue(String(initial.value));
+        setUnit(initial.unit);
+        setNotes(initial.notes ?? '');
+        setPhotoUri(initial.photoUri);
+      } else {
+        setDate(todayStr());
+        setTestType(TEST_TYPES[0].label);
+        setValue('');
+        setUnit(TEST_TYPES[0].unit);
+        setNotes('');
+        setPhotoUri(null);
+      }
       setError('');
     }
-  }, [visible]);
+  }, [visible, initial]);
 
   const selectType = (label: string) => {
     setTestType(label);
     const def = getTestTypeDef(label);
-    setUnit((prev) => (prev === '' ? def.unit : prev));
+    setUnit((prev) => (prev === '' || !initial ? def.unit : prev));
   };
 
   const pickPhoto = async () => {
@@ -229,7 +289,11 @@ function AddBloodTestModal({ visible, onDismiss, onSaved }: AddBloodTestModalPro
       photoUri,
       source: photoUri ? 'photo' : 'manual',
     };
-    await addBloodTest(input);
+    if (initial) {
+      await updateBloodTest(initial.id, input);
+    } else {
+      await addBloodTest(input);
+    }
     setBusy(false);
     onSaved();
   };
@@ -240,7 +304,7 @@ function AddBloodTestModal({ visible, onDismiss, onSaved }: AddBloodTestModalPro
       onDismiss={onDismiss}
       contentContainerStyle={[styles.modal, { backgroundColor: theme.colors.surface }]}>
       <Text variant="titleLarge" style={{ color: theme.colors.onSurface, fontWeight: '700' }}>
-        Add blood test
+        {initial ? 'Edit blood test' : 'Add blood test'}
       </Text>
       <DateField value={date} onChange={setDate} maximumDate={new Date()} />
 
@@ -319,7 +383,7 @@ function AddBloodTestModal({ visible, onDismiss, onSaved }: AddBloodTestModalPro
           Cancel
         </Button>
         <Button mode="contained" onPress={save} loading={busy} disabled={busy || !value}>
-          Save
+          {initial ? 'Update' : 'Save'}
         </Button>
       </View>
     </Modal>
@@ -327,6 +391,7 @@ function AddBloodTestModal({ visible, onDismiss, onSaved }: AddBloodTestModalPro
 }
 
 const styles = StyleSheet.create({
+  search: { marginTop: 4, marginBottom: 8, borderRadius: 12, elevation: 0 },
   section: { marginTop: 20 },
   chips: { gap: 8, paddingVertical: 4 },
   chip: { alignSelf: 'flex-start' },

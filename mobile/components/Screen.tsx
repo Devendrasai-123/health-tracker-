@@ -2,6 +2,7 @@ import { type ReactNode } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { Text, useTheme } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { palette, radii, spacing } from '@/constants/theme';
 
 interface ScreenProps {
   title: string;
@@ -13,20 +14,17 @@ interface ScreenProps {
 
 export function Screen({ title, subtitle, action, children, scroll = true }: ScreenProps) {
   const theme = useTheme();
+  const ink = theme.dark ? palette.orchidWhite : palette.warmBlack;
+  const muted = theme.dark ? palette.chromeWhite : palette.masala;
+
   return (
     <SafeAreaView
       edges={['top']}
       style={[styles.root, { backgroundColor: theme.colors.background }]}>
-      <View style={[styles.header, { borderBottomColor: theme.colors.outlineVariant }]}>
+      <View style={styles.header}>
         <View style={styles.headerText}>
-          <Text variant="headlineMedium" style={[styles.title, { color: theme.colors.onSurface }]}>
-            {title}
-          </Text>
-          {subtitle ? (
-            <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
-              {subtitle}
-            </Text>
-          ) : null}
+          <Text style={[styles.title, { color: ink }]}>{title}</Text>
+          {subtitle ? <Text style={[styles.subtitle, { color: muted }]}>{subtitle}</Text> : null}
         </View>
         {action}
       </View>
@@ -34,7 +32,8 @@ export function Screen({ title, subtitle, action, children, scroll = true }: Scr
         <ScrollView
           style={styles.scroll}
           contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled">
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}>
           {children}
         </ScrollView>
       ) : (
@@ -51,12 +50,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.md,
   },
-  headerText: { flex: 1 },
-  title: { fontWeight: '700' },
+  headerText: { flex: 1, paddingRight: 12 },
+  title: { fontSize: 28, fontWeight: '800', letterSpacing: -0.5 },
+  subtitle: { fontSize: 13, fontWeight: '500', marginTop: 2, opacity: 0.85 },
   scroll: { flex: 1 },
-  scrollContent: { padding: 16, paddingBottom: 140 },
+  scrollContent: { paddingHorizontal: spacing.md, paddingBottom: 140 },
 });

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import {
   Button,
@@ -19,9 +19,13 @@ import { EmptyState } from '@/components/EmptyState';
 import { DateField } from '@/components/DateField';
 import { NumberField } from '@/components/NumberField';
 import { formatDate, INTENSITY_LABELS, todayStr } from '@/constants/metrics';
+import { WORKOUT_TYPES } from '@/utils/constants';
+import { summarizeWorkoutsWeek } from '@/utils/calculations';
 import { useDataStore } from '@/stores/data';
-import { addWorkout, deleteWorkout } from '@/services/workout-service';
-import type { WorkoutInput } from '@/types';
+import { addWorkout, deleteWorkout, updateWorkout } from '@/services/workout-service';
+import { GlassCard } from '@/components/GlassCard';
+import { palette, radii } from '@/constants/theme';
+import type { WorkoutEntry, WorkoutInput } from '@/types';
 
 export default function WorkoutsScreen() {
   const theme = useTheme();
@@ -29,12 +33,15 @@ export default function WorkoutsScreen() {
   const reloadWorkouts = useDataStore((s) => s.reloadWorkouts);
 
   const [showAdd, setShowAdd] = useState(false);
+  const [editing, setEditing] = useState<WorkoutEntry | null>(null);
 
   useFocusEffect(
     useCallback(() => {
       reloadWorkouts();
     }, [reloadWorkouts]),
   );
+
+  const week = useMemo(() => summarizeWorkoutsWeek(workouts), [workouts]);
 
   const remove = async (id: number) => {
     await deleteWorkout(id);
@@ -46,10 +53,37 @@ export default function WorkoutsScreen() {
       title="Workouts"
       subtitle="Training log"
       action={
-        <Button mode="contained" compact onPress={() => setShowAdd(true)}>
+        <Button
+          mode="contained"
+          compact
+          buttonColor={palette.vermillion}
+          textColor="#fff"
+          style={{ borderRadius: radii.pill }}
+          onPress={() => {
+            setEditing(null);
+            setShowAdd(true);
+          }}>
           Log workout
         </Button>
       }>
+      <GlassCard style={styles.summary} contentStyle={styles.summaryContent}>
+        <Text style={[styles.summaryTitle, { color: theme.colors.onSurface }]}>This week</Text>
+        <View style={styles.summaryRow}>
+          <View style={styles.summaryCell}>
+            <Text style={[styles.summaryValue, { color: theme.colors.onSurface }]}>{week.count}</Text>
+            <Text style={[styles.summaryLabel, { color: theme.colors.onSurfaceVariant }]}>sessions</Text>
+          </View>
+          <View style={styles.summaryCell}>
+            <Text style={[styles.summaryValue, { color: theme.colors.onSurface }]}>{week.durationMin}</Text>
+            <Text style={[styles.summaryLabel, { color: theme.colors.onSurfaceVariant }]}>minutes</Text>
+          </View>
+          <View style={styles.summaryCell}>
+            <Text style={[styles.summaryValue, { color: theme.colors.onSurface }]}>{week.calories}</Text>
+            <Text style={[styles.summaryLabel, { color: theme.colors.onSurfaceVariant }]}>kcal</Text>
+          </View>
+        </View>
+      </GlassCard>
+
       {workouts.length === 0 ? (
         <EmptyState
           icon="dumbbell"
@@ -59,7 +93,13 @@ export default function WorkoutsScreen() {
       ) : (
         <View style={styles.list}>
           {workouts.map((w) => (
-            <Card key={w.id} style={[styles.item, { backgroundColor: theme.colors.surface }]}>
+            <Card
+              key={w.id}
+              style={[styles.item, { backgroundColor: theme.colors.surface }]}
+              onPress={() => {
+                setEditing(w);
+                setShowAdd(true);
+              }}>
               <Card.Content style={styles.itemContent}>
                 <View style={[styles.itemIcon, { backgroundColor: theme.colors.primary + '22' }]}>
                   <MaterialCommunityIcons name="dumbbell" size={20} color={theme.colors.primary} />
@@ -90,9 +130,14 @@ export default function WorkoutsScreen() {
       <Portal>
         <AddWorkoutModal
           visible={showAdd}
-          onDismiss={() => setShowAdd(false)}
+          initial={editing}
+          onDismiss={() => {
+            setShowAdd(false);
+            setEditing(null);
+          }}
           onSaved={() => {
             setShowAdd(false);
+            setEditing(null);
             reloadWorkouts();
           }}
         />
@@ -103,13 +148,14 @@ export default function WorkoutsScreen() {
 
 interface AddWorkoutModalProps {
   visible: boolean;
+  initial: WorkoutEntry | null;
   onDismiss: () => void;
   onSaved: () => void;
 }
 
 const INTENSITIES = [1, 2, 3, 4, 5];
 
-function AddWorkoutModal({ visible, onDismiss, onSaved }: AddWorkoutModalProps) {
+function AddWorkoutModal({ visible, initial, onDismiss, onSaved }: AddWorkoutModalProps) {
   const theme = useTheme();
   const [date, setDate] = useState(todayStr());
   const [name, setName] = useState('');
@@ -122,15 +168,24 @@ function AddWorkoutModal({ visible, onDismiss, onSaved }: AddWorkoutModalProps) 
 
   useEffect(() => {
     if (visible) {
-      setDate(todayStr());
-      setName('');
-      setDuration('');
-      setIntensity(null);
-      setCalories('');
-      setNotes('');
+      if (initial) {
+        setDate(initial.date);
+        setName(initial.name);
+        setDuration(initial.durationMin != null ? String(initial.durationMin) : '');
+        setIntensity(initial.intensity);
+        setCalories(initial.calories != null ? String(initial.calories) : '');
+        setNotes(initial.notes ?? '');
+      } else {
+        setDate(todayStr());
+        setName('');
+        setDuration('');
+        setIntensity(null);
+        setCalories('');
+        setNotes('');
+      }
       setError('');
     }
-  }, [visible]);
+  }, [visible, initial]);
 
   const save = async () => {
     if (!name.trim()) {
@@ -146,7 +201,11 @@ function AddWorkoutModal({ visible, onDismiss, onSaved }: AddWorkoutModalProps) 
       calories: calories ? Number(calories) : null,
       notes: notes || null,
     };
-    await addWorkout(input);
+    if (initial) {
+      await updateWorkout(initial.id, input);
+    } else {
+      await addWorkout(input);
+    }
     setBusy(false);
     onSaved();
   };
@@ -157,12 +216,27 @@ function AddWorkoutModal({ visible, onDismiss, onSaved }: AddWorkoutModalProps) 
       onDismiss={onDismiss}
       contentContainerStyle={[styles.modal, { backgroundColor: theme.colors.surface }]}>
       <Text variant="titleLarge" style={{ color: theme.colors.onSurface, fontWeight: '700' }}>
-        Log workout
+        {initial ? 'Edit workout' : 'Log workout'}
       </Text>
       <DateField value={date} onChange={setDate} maximumDate={new Date()} />
+
+      <Text variant="labelMedium" style={styles.fieldLabel}>
+        Activity type
+      </Text>
+      <View style={styles.chips}>
+        {WORKOUT_TYPES.map((t) => {
+          const active = name === t;
+          return (
+            <Chip key={t} selected={active} onPress={() => setName(t)} showSelectedCheck={false}>
+              {t}
+            </Chip>
+          );
+        })}
+      </View>
+
       <TextInput
         mode="outlined"
-        label="Activity (e.g. Running, Weights)"
+        label="Activity name"
         value={name}
         onChangeText={setName}
         style={styles.field}
@@ -205,7 +279,7 @@ function AddWorkoutModal({ visible, onDismiss, onSaved }: AddWorkoutModalProps) 
           Cancel
         </Button>
         <Button mode="contained" onPress={save} loading={busy} disabled={busy || !name.trim()}>
-          Save
+          {initial ? 'Update' : 'Save'}
         </Button>
       </View>
     </Modal>
@@ -213,8 +287,15 @@ function AddWorkoutModal({ visible, onDismiss, onSaved }: AddWorkoutModalProps) 
 }
 
 const styles = StyleSheet.create({
-  list: { gap: 8, marginTop: 8 },
-  item: { borderRadius: 14, elevation: 1 },
+  summary: { marginTop: 4 },
+  summaryContent: { paddingVertical: 14 },
+  summaryTitle: { fontSize: 16, fontWeight: '700' },
+  summaryRow: { flexDirection: 'row', justifyContent: 'space-around', marginTop: 10 },
+  summaryCell: { alignItems: 'center' },
+  summaryValue: { fontSize: 28, fontWeight: '800', letterSpacing: -0.5 },
+  summaryLabel: { fontSize: 12, fontWeight: '500', marginTop: 2 },
+  list: { gap: 8, marginTop: 12 },
+  item: { borderRadius: radii.lg, elevation: 0, borderWidth: StyleSheet.hairlineWidth, borderColor: palette.chromeWhite },
   itemContent: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10 },
   itemIcon: {
     width: 36,
@@ -225,7 +306,7 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   itemText: { flex: 1 },
-  modal: { margin: 24, borderRadius: 18, padding: 20, maxHeight: '88%' },
+  modal: { margin: 24, borderRadius: radii.xl, padding: 20, maxHeight: '88%' },
   field: { marginTop: 10 },
   fieldLabel: { marginTop: 12, marginBottom: 4, opacity: 0.8 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 },

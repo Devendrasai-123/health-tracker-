@@ -163,3 +163,14 @@ class EncryptionService {
 }
 
 export const encryptionService = new EncryptionService();
+
+/** Convenience wrappers matching the prompt API. */
+export function encryptValue(value: string, keyHex?: string): string {
+  if (keyHex) return encryptionService.encryptWithKey(value, keyHex);
+  return encryptionService.encrypt(value);
+}
+
+export function decryptValue(encrypted: string, keyHex?: string): string {
+  if (keyHex) return encryptionService.decryptWithKey(encrypted, keyHex);
+  return encryptionService.decrypt(encrypted);
+}

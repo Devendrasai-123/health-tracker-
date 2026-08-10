@@ -2,11 +2,12 @@ import { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Button, Card, HelperText, Modal, Portal, SegmentedButtons, Text, TextInput, useTheme } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 
 import { Screen } from '@/components/Screen';
-import { StatCard } from '@/components/StatCard';
 import { RecoveryCard } from '@/components/RecoveryCard';
+import { MetricsCard } from '@/components/MetricsCard';
+import { GlassCard } from '@/components/GlassCard';
 import { AlertBanner } from '@/components/AlertBanner';
 import { TrendChart } from '@/components/TrendChart';
 import { NumberField } from '@/components/NumberField';
@@ -14,15 +15,17 @@ import { DateField } from '@/components/DateField';
 import { computeAlerts, shortDate, todayStr } from '@/constants/metrics';
 import { useDataStore } from '@/stores/data';
 import { upsertDailyMetrics } from '@/services/metrics-service';
-import { calculateRecoveryScore, generateInsights } from '@/services/ai-engine';
+import { calculateRecoveryScore, checkHealthAlerts, generateInsights } from '@/services/ai-engine';
 import { useSettingsStore } from '@/stores/settings';
 import { syncLatest } from '@/services/sync-manager';
+import { palette, radii } from '@/constants/theme';
 import type { DailyMetrics, DailyMetricsInput } from '@/types';
 
 type ChartKey = 'recovery' | 'weight' | 'steps';
 
 export default function DashboardScreen() {
   const theme = useTheme();
+  const router = useRouter();
   const loadDashboard = useDataStore((s) => s.loadDashboard);
   const metrics = useDataStore((s) => s.metrics);
   const bloodTests = useDataStore((s) => s.bloodTests);
@@ -54,11 +57,15 @@ export default function DashboardScreen() {
   const latest: DailyMetrics | null = metrics.length ? metrics[metrics.length - 1] : null;
   const todayCalories = caloriesByDate[today] ?? 0;
   const todayMeals = foodByDate[today] ?? [];
-  const alerts = computeAlerts(
+  const labAlerts = computeAlerts(
     bloodTests.map((t) => ({ testType: t.testType, value: t.value, unit: t.unit })),
   );
+  const metricAlerts = checkHealthAlerts(metrics);
+  const alerts = [...metricAlerts, ...labAlerts];
 
   const insights = generateInsights({ metrics, workouts });
+  const recentTests = bloodTests.slice(0, 3);
+  const recentWorkouts = workouts.slice(0, 3);
 
   const chartData = (key: ChartKey) => {
     return metrics
@@ -74,7 +81,13 @@ export default function DashboardScreen() {
       title="Today"
       subtitle={new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
       action={
-        <Button mode="contained-tonal" compact onPress={() => setShowMetrics(true)}>
+        <Button
+          mode="contained"
+          compact
+          onPress={() => setShowMetrics(true)}
+          buttonColor={palette.vermillion}
+          textColor="#fff"
+          style={{ borderRadius: radii.pill }}>
           Log metrics
         </Button>
       }>
@@ -83,37 +96,92 @@ export default function DashboardScreen() {
         note={latest?.notes ?? null}
       />
 
-      <View style={styles.statRow}>
-        <StatCard icon="shoe-print" label="Steps" value={latest?.steps != null ? String(latest.steps) : '—'} />
-        <StatCard icon="moon-waning-crescent" label="Sleep" value={latest?.sleepHours != null ? String(latest.sleepHours) : '—'} unit="h" />
-      </View>
-      <View style={styles.statRow}>
-        <StatCard icon="heart" label="Resting HR" value={latest?.heartRate != null ? String(latest.heartRate) : '—'} unit="bpm" />
-        <StatCard icon="scale-bathroom" label="Weight" value={latest?.weight != null ? String(latest.weight) : '—'} unit="kg" />
+      <MetricsCard
+        heartRate={latest?.heartRate}
+        steps={latest?.steps}
+        sleepHours={latest?.sleepHours}
+        stress={latest?.stress}
+      />
+
+      <View style={styles.quickActions}>
+        <Button mode="outlined" compact icon="plus" onPress={() => setShowMetrics(true)} textColor={palette.warmBlack} style={styles.chipBtn}>
+          Metrics
+        </Button>
+        <Button mode="outlined" compact icon="flask-outline" onPress={() => router.push('/(tabs)/medical')} textColor={palette.warmBlack} style={styles.chipBtn}>
+          Labs
+        </Button>
+        <Button mode="outlined" compact icon="food-apple-outline" onPress={() => router.push('/(tabs)/food')} textColor={palette.warmBlack} style={styles.chipBtn}>
+          Meal
+        </Button>
+        <Button mode="outlined" compact icon="dumbbell" onPress={() => router.push('/(tabs)/workouts')} textColor={palette.warmBlack} style={styles.chipBtn}>
+          Train
+        </Button>
       </View>
 
-      <Card style={[styles.foodCard, { backgroundColor: theme.colors.surface }]}>
-        <Card.Content>
-          <View style={styles.foodRow}>
-            <View>
-              <Text variant="labelMedium" style={{ color: theme.colors.onSurfaceVariant }}>
-                Calories today
-              </Text>
-              <Text variant="headlineSmall" style={{ color: theme.colors.onSurface, fontWeight: '700' }}>
-                {todayCalories} <Text variant="bodySmall">kcal</Text>
-              </Text>
-            </View>
-            <View>
-              <Text variant="labelMedium" style={{ color: theme.colors.onSurfaceVariant }}>
-                Meals
-              </Text>
-              <Text variant="headlineSmall" style={{ color: theme.colors.onSurface, fontWeight: '700' }}>
-                {todayMeals.length}
-              </Text>
-            </View>
+      <GlassCard style={styles.foodCard} contentStyle={styles.foodContent}>
+        <View style={styles.foodRow}>
+          <View>
+            <Text style={[styles.metaLabel, { color: theme.colors.onSurfaceVariant }]}>
+              Calories today
+            </Text>
+            <Text style={[styles.metaValue, { color: theme.colors.onSurface }]}>
+              {todayCalories} <Text style={styles.metaUnit}>kcal</Text>
+            </Text>
           </View>
-        </Card.Content>
-      </Card>
+          <View>
+            <Text style={[styles.metaLabel, { color: theme.colors.onSurfaceVariant }]}>Meals</Text>
+            <Text style={[styles.metaValue, { color: theme.colors.onSurface }]}>{todayMeals.length}</Text>
+          </View>
+          <View>
+            <Text style={[styles.metaLabel, { color: theme.colors.onSurfaceVariant }]}>Weight</Text>
+            <Text style={[styles.metaValue, { color: theme.colors.onSurface }]}>
+              {latest?.weight != null ? latest.weight : '—'}
+              {latest?.weight != null ? <Text style={styles.metaUnit}> kg</Text> : null}
+            </Text>
+          </View>
+        </View>
+      </GlassCard>
+
+      {recentTests.length > 0 ? (
+        <View style={styles.recentSection}>
+          <Text variant="titleMedium" style={{ color: theme.colors.onSurface }}>
+            Recent blood tests
+          </Text>
+          {recentTests.map((t) => (
+            <Text key={t.id} variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginTop: 4 }}>
+              {t.testType}: {t.value} {t.unit} · {shortDate(t.date)}
+            </Text>
+          ))}
+        </View>
+      ) : null}
+
+      {todayMeals.length > 0 ? (
+        <View style={styles.recentSection}>
+          <Text variant="titleMedium" style={{ color: theme.colors.onSurface }}>
+            Recent meals
+          </Text>
+          {todayMeals.slice(0, 3).map((m) => (
+            <Text key={m.id} variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginTop: 4 }}>
+              {m.name}
+              {m.calories != null ? ` · ${m.calories} kcal` : ''}
+            </Text>
+          ))}
+        </View>
+      ) : null}
+
+      {recentWorkouts.length > 0 ? (
+        <View style={styles.recentSection}>
+          <Text variant="titleMedium" style={{ color: theme.colors.onSurface }}>
+            Recent workouts
+          </Text>
+          {recentWorkouts.map((w) => (
+            <Text key={w.id} variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginTop: 4 }}>
+              {w.name}
+              {w.durationMin != null ? ` · ${w.durationMin} min` : ''} · {shortDate(w.date)}
+            </Text>
+          ))}
+        </View>
+      ) : null}
 
       <View style={styles.chartSection}>
         <View style={styles.chartHeader}>
@@ -133,7 +201,7 @@ export default function DashboardScreen() {
         </View>
         <TrendChart
           data={chartData(chart)}
-          color={chart === 'recovery' ? '#2F6FED' : chart === 'weight' ? '#B54BD6' : theme.colors.primary}
+          color={palette.vermillion}
           yLabelSuffix={chart === 'recovery' ? '' : chart === 'weight' ? ' kg' : ''}
           area
         />
@@ -313,19 +381,33 @@ function EditDailyMetricsModal({ visible, onDismiss, initial, onSaved }: EditDai
 }
 
 const styles = StyleSheet.create({
-  statRow: { flexDirection: 'row', gap: 12, marginTop: 12 },
-  foodCard: { marginTop: 12, borderRadius: 16, elevation: 1 },
-  foodRow: { flexDirection: 'row', justifyContent: 'space-around', paddingVertical: 4 },
+  quickActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 12,
+  },
+  chipBtn: {
+    borderRadius: radii.pill,
+    borderColor: palette.chromeWhite,
+  },
+  foodCard: { marginTop: 12 },
+  foodContent: { paddingVertical: 14 },
+  foodRow: { flexDirection: 'row', justifyContent: 'space-around' },
+  metaLabel: { fontSize: 12, fontWeight: '600' },
+  metaValue: { fontSize: 24, fontWeight: '800', letterSpacing: -0.4, marginTop: 2 },
+  metaUnit: { fontSize: 12, fontWeight: '500' },
+  recentSection: { marginTop: 16 },
   chartSection: { marginTop: 20 },
   chartHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, gap: 8 },
   alerts: { marginTop: 20 },
   insightList: { gap: 8 },
-  insightCard: { borderRadius: 14, borderLeftWidth: 4, elevation: 1 },
+  insightCard: { borderRadius: radii.lg, borderLeftWidth: 4, elevation: 0 },
   insightContent: { flexDirection: 'row', alignItems: 'flex-start', paddingVertical: 10 },
   insightText: { flex: 1, marginLeft: 10 },
   modal: {
     margin: 24,
-    borderRadius: 18,
+    borderRadius: radii.xl,
     padding: 20,
     maxHeight: '85%',
   },

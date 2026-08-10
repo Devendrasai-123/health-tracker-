@@ -1,6 +1,8 @@
 import { StyleSheet, View } from 'react-native';
-import { Card, Text, useTheme } from 'react-native-paper';
+import { Text, useTheme } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { GlassCard } from '@/components/GlassCard';
+import { palette, radii } from '@/constants/theme';
 
 interface StatCardProps {
   icon: keyof typeof MaterialCommunityIcons.glyphMap;
@@ -12,44 +14,39 @@ interface StatCardProps {
 
 export function StatCard({ icon, label, value, unit, accent }: StatCardProps) {
   const theme = useTheme();
-  const color = accent ?? theme.colors.primary;
+  const color = accent ?? palette.vermillion;
+  const ink = theme.dark ? palette.orchidWhite : palette.warmBlack;
+  const muted = theme.dark ? palette.chromeWhite : palette.masala;
+
   return (
-    <Card style={[styles.card, { backgroundColor: theme.colors.surface }]}>
-      <Card.Content style={styles.content}>
-        <View style={[styles.iconWrap, { backgroundColor: color + '22' }]}>
-          <MaterialCommunityIcons name={icon} size={22} color={color} />
-        </View>
-        <Text variant="labelSmall" style={styles.label} numberOfLines={1}>
-          {label}
-        </Text>
-        <View style={styles.valueRow}>
-          <Text variant="titleLarge" style={[styles.value, { color: theme.colors.onSurface }]}>
-            {value}
-          </Text>
-          {unit ? (
-            <Text variant="labelSmall" style={styles.unit}>
-              {unit}
-            </Text>
-          ) : null}
-        </View>
-      </Card.Content>
-    </Card>
+    <GlassCard style={styles.card} contentStyle={styles.content}>
+      <View style={[styles.iconWrap, { backgroundColor: color + '18' }]}>
+        <MaterialCommunityIcons name={icon} size={20} color={color} />
+      </View>
+      <Text style={[styles.label, { color: muted }]} numberOfLines={1}>
+        {label}
+      </Text>
+      <View style={styles.valueRow}>
+        <Text style={[styles.value, { color: ink }]}>{value}</Text>
+        {unit ? <Text style={[styles.unit, { color: muted }]}>{unit}</Text> : null}
+      </View>
+    </GlassCard>
   );
 }
 
 const styles = StyleSheet.create({
-  card: { flex: 1, borderRadius: 16, elevation: 1 },
-  content: { paddingVertical: 12 },
+  card: { flex: 1 },
+  content: { paddingVertical: 14 },
   iconWrap: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
+    width: 36,
+    height: 36,
+    borderRadius: radii.sm,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 8,
+    marginBottom: 10,
   },
-  label: { opacity: 0.7 },
+  label: { fontSize: 12, fontWeight: '600' },
   valueRow: { flexDirection: 'row', alignItems: 'baseline', marginTop: 2 },
-  value: { fontWeight: '700' },
-  unit: { marginLeft: 4, opacity: 0.7 },
+  value: { fontSize: 22, fontWeight: '800', letterSpacing: -0.4 },
+  unit: { marginLeft: 4, fontSize: 12, fontWeight: '500' },
 });

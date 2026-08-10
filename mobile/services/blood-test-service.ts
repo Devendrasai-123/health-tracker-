@@ -65,6 +65,25 @@ export async function listBloodTestsByType(testType: string, limit = 100): Promi
   return rows.map(rowToBloodTest);
 }
 
+export async function updateBloodTest(id: number, input: BloodTestInput): Promise<void> {
+  const db = await getDb();
+  const valueEnc = encryptionService.encrypt(String(input.value));
+  const notesEnc = input.notes ? encryptionService.encrypt(input.notes) : null;
+  await db.runAsync(
+    `UPDATE blood_tests
+     SET date = ?, test_type = ?, value_enc = ?, unit = ?, notes_enc = ?, photo_uri = ?, source = ?
+     WHERE id = ?`,
+    input.date,
+    input.testType,
+    valueEnc,
+    input.unit ?? '',
+    notesEnc,
+    input.photoUri ?? null,
+    input.source ?? 'manual',
+    id,
+  );
+}
+
 export async function deleteBloodTest(id: number): Promise<void> {
   const db = await getDb();
   await db.runAsync('DELETE FROM blood_tests WHERE id = ?', id);

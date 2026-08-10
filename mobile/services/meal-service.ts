@@ -65,6 +65,24 @@ export async function listFoodBetween(fromDate: string, toDate: string): Promise
   return rows.map(rowToFood);
 }
 
+export async function updateFoodLog(id: number, input: FoodLogInput): Promise<void> {
+  const db = await getDb();
+  await db.runAsync(
+    `UPDATE food_log
+     SET date = ?, meal_type = ?, name = ?, calories = ?, protein = ?, carbs = ?, fat = ?, photo_uri = ?
+     WHERE id = ?`,
+    input.date,
+    input.mealType,
+    input.name,
+    input.calories ?? null,
+    input.protein ?? null,
+    input.carbs ?? null,
+    input.fat ?? null,
+    input.photoUri ?? null,
+    id,
+  );
+}
+
 export async function deleteFoodLog(id: number): Promise<void> {
   const db = await getDb();
   await db.runAsync('DELETE FROM food_log WHERE id = ?', id);

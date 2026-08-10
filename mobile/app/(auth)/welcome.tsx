@@ -3,7 +3,10 @@ import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 're
 import { Button, HelperText, Text, TextInput, useTheme } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useAuthStore, MIN_PASSWORD_LENGTH } from '@/stores/auth';
+import { GlassCard } from '@/components/GlassCard';
+import { palette, radii, spacing } from '@/constants/theme';
 
 export default function WelcomeScreen() {
   const theme = useTheme();
@@ -17,6 +20,8 @@ export default function WelcomeScreen() {
   const [busy, setBusy] = useState(false);
 
   const mismatch = confirm.length > 0 && confirm !== password;
+  const ink = theme.dark ? palette.orchidWhite : palette.warmBlack;
+  const muted = theme.dark ? palette.chromeWhite : palette.masala;
 
   const onSubmit = async () => {
     clearError();
@@ -27,97 +32,113 @@ export default function WelcomeScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.root, { backgroundColor: theme.colors.background }]}>
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView contentContainerStyle={styles.content}>
-          <View style={styles.logoWrap}>
-            <View style={[styles.logo, { backgroundColor: theme.colors.primary }]}>
-              <MaterialCommunityIcons name="heart-pulse" size={40} color={theme.colors.onPrimary} />
+    <View style={styles.root}>
+      <LinearGradient
+        colors={
+          theme.dark
+            ? [palette.warmBlack, '#3A2A22', palette.warmBlack]
+            : [palette.orchidWhite, '#FFE8DC', palette.orchidWhite]
+        }
+        style={StyleSheet.absoluteFill}
+      />
+      <SafeAreaView style={styles.flex}>
+        <KeyboardAvoidingView
+          style={styles.flex}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+            <View style={styles.logoWrap}>
+              <View style={styles.logo}>
+                <MaterialCommunityIcons name="lock-outline" size={36} color="#fff" />
+              </View>
+              <Text style={[styles.title, { color: ink }]}>lif.os</Text>
+              <Text style={[styles.subtitle, { color: muted }]}>
+                Your private health tracker. Data stays on this device.
+              </Text>
             </View>
-            <Text variant="headlineMedium" style={[styles.title, { color: theme.colors.onSurface }]}>
-              lif.os
-            </Text>
-            <Text variant="bodyMedium" style={styles.subtitle}>
-              Your private health tracker. Data stays on this device.
-            </Text>
-          </View>
 
-          <View style={styles.form}>
-            <Text variant="titleMedium" style={{ color: theme.colors.onSurface }}>
-              Create a passcode
-            </Text>
-            <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
-              Your passcode encrypts all medical data with AES-256. It is never stored or sent
-              anywhere. If you forget it, the encrypted data cannot be recovered.
-            </Text>
+            <GlassCard contentStyle={styles.form}>
+              <Text style={[styles.formTitle, { color: ink }]}>Create a passcode</Text>
+              <Text style={[styles.formHint, { color: muted }]}>
+                AES-256 encryption. If you forget it, encrypted data cannot be recovered.
+              </Text>
 
-            <TextInput
-              label="Passcode"
-              mode="outlined"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry={!showPassword}
-              autoCapitalize="none"
-              right={
-                <TextInput.Icon
-                  icon={showPassword ? 'eye-off' : 'eye'}
-                  onPress={() => setShowPassword((v) => !v)}
-                />
-              }
-              style={styles.input}
-            />
-            <TextInput
-              label="Confirm passcode"
-              mode="outlined"
-              value={confirm}
-              onChangeText={setConfirm}
-              secureTextEntry={!showPassword}
-              autoCapitalize="none"
-              style={styles.input}
-            />
-            <HelperText type="error" visible={!!mismatch}>
-              Passcodes do not match.
-            </HelperText>
-            <HelperText type="error" visible={!!error && !mismatch}>
-              {error}
-            </HelperText>
-            <HelperText type="info" visible={!error && !mismatch}>
-              Minimum {MIN_PASSWORD_LENGTH} characters.
-            </HelperText>
+              <TextInput
+                label="Passcode"
+                mode="outlined"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+                outlineColor={palette.chromeWhite}
+                activeOutlineColor={palette.vermillion}
+                right={
+                  <TextInput.Icon
+                    icon={showPassword ? 'eye-off' : 'eye'}
+                    onPress={() => setShowPassword((v) => !v)}
+                  />
+                }
+                style={styles.input}
+              />
+              <TextInput
+                label="Confirm passcode"
+                mode="outlined"
+                value={confirm}
+                onChangeText={setConfirm}
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+                outlineColor={palette.chromeWhite}
+                activeOutlineColor={palette.vermillion}
+                style={styles.input}
+              />
+              <HelperText type="error" visible={!!mismatch}>
+                Passcodes do not match.
+              </HelperText>
+              <HelperText type="error" visible={!!error && !mismatch}>
+                {error}
+              </HelperText>
+              <HelperText type="info" visible={!error && !mismatch}>
+                Minimum {MIN_PASSWORD_LENGTH} characters.
+              </HelperText>
 
-            <Button
-              mode="contained"
-              onPress={onSubmit}
-              loading={busy}
-              disabled={busy || password.length < MIN_PASSWORD_LENGTH || mismatch}
-              style={styles.button}>
-              Get started
-            </Button>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+              <Button
+                mode="contained"
+                onPress={onSubmit}
+                loading={busy}
+                disabled={busy || password.length < MIN_PASSWORD_LENGTH || mismatch}
+                buttonColor={palette.vermillion}
+                textColor="#fff"
+                style={styles.button}
+                contentStyle={styles.buttonContent}>
+                Get started
+              </Button>
+            </GlassCard>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
   flex: { flex: 1 },
-  content: { padding: 24, flexGrow: 1, justifyContent: 'center' },
-  logoWrap: { alignItems: 'center', marginBottom: 32 },
+  content: { padding: spacing.lg, flexGrow: 1, justifyContent: 'center' },
+  logoWrap: { alignItems: 'center', marginBottom: 28 },
   logo: {
     width: 72,
     height: 72,
-    borderRadius: 22,
+    borderRadius: radii.lg,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 14,
+    backgroundColor: palette.vermillion,
   },
-  title: { fontWeight: '800', letterSpacing: 1 },
-  subtitle: { textAlign: 'center', marginTop: 6, opacity: 0.8 },
-  form: { gap: 4 },
-  input: { marginTop: 12 },
-  button: { marginTop: 16, borderRadius: 12, paddingVertical: 4 },
+  title: { fontSize: 34, fontWeight: '800', letterSpacing: 1 },
+  subtitle: { textAlign: 'center', marginTop: 8, fontSize: 14, lineHeight: 20, maxWidth: 280 },
+  form: { gap: 2 },
+  formTitle: { fontSize: 18, fontWeight: '700' },
+  formHint: { fontSize: 13, lineHeight: 18, marginTop: 4, marginBottom: 8 },
+  input: { marginTop: 10, backgroundColor: 'transparent' },
+  button: { marginTop: 12, borderRadius: radii.md },
+  buttonContent: { paddingVertical: 6 },
 });

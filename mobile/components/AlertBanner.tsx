@@ -1,7 +1,9 @@
 import { StyleSheet, View } from 'react-native';
-import { Card, Text, useTheme } from 'react-native-paper';
+import { Text, useTheme } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import type { HealthAlert } from '@/constants/metrics';
+import { GlassCard } from '@/components/GlassCard';
+import { palette } from '@/constants/theme';
 
 interface AlertBannerProps {
   alerts: HealthAlert[];
@@ -15,8 +17,8 @@ const LEVEL_ICON = {
 
 const LEVEL_COLOR = {
   high: '#C62828',
-  low: '#EF6C00',
-  info: '#2F6FED',
+  low: palette.vermillion,
+  info: palette.masala,
 } as const;
 
 export function AlertBanner({ alerts }: AlertBannerProps) {
@@ -27,21 +29,20 @@ export function AlertBanner({ alerts }: AlertBannerProps) {
       {alerts.slice(0, 4).map((alert, i) => {
         const color = LEVEL_COLOR[alert.level];
         return (
-          <Card
+          <GlassCard
             key={`${alert.title}-${i}`}
-            style={[styles.card, { borderLeftColor: color, backgroundColor: theme.colors.surface }]}>
-            <Card.Content style={styles.content}>
-              <MaterialCommunityIcons name={LEVEL_ICON[alert.level]} size={22} color={color} />
-              <View style={styles.textWrap}>
-                <Text variant="labelLarge" style={{ color: theme.colors.onSurface }}>
-                  {alert.title}
-                </Text>
-                <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
-                  {alert.message}
-                </Text>
-              </View>
-            </Card.Content>
-          </Card>
+            style={[styles.card, { borderLeftColor: color, borderLeftWidth: 4 }]}
+            contentStyle={styles.content}>
+            <MaterialCommunityIcons name={LEVEL_ICON[alert.level]} size={22} color={color} />
+            <View style={styles.textWrap}>
+              <Text variant="labelLarge" style={{ color: theme.colors.onSurface }}>
+                {alert.title}
+              </Text>
+              <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
+                {alert.message}
+              </Text>
+            </View>
+          </GlassCard>
         );
       })}
     </View>
@@ -50,7 +51,7 @@ export function AlertBanner({ alerts }: AlertBannerProps) {
 
 const styles = StyleSheet.create({
   wrap: { gap: 8 },
-  card: { borderRadius: 14, borderLeftWidth: 4, elevation: 1 },
+  card: {},
   content: { flexDirection: 'row', alignItems: 'flex-start', paddingVertical: 10 },
   textWrap: { flex: 1, marginLeft: 10 },
 });

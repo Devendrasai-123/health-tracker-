@@ -37,7 +37,7 @@ export default function RootLayout() {
   if (!bootstrapped || !settingsLoaded) {
     return (
       <View style={styles.splash}>
-        <ActivityIndicator size="large" />
+        <ActivityIndicator size="large" color="#EB5E28" />
       </View>
     );
   }
@@ -62,6 +62,6 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F5F7F8',
+    backgroundColor: '#FFFCF2',
   },
 });

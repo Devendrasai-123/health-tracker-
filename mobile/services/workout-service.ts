@@ -58,6 +58,22 @@ export async function listWorkoutsForDate(date: string): Promise<WorkoutEntry[]>
   return rows.map(rowToWorkout);
 }
 
+export async function updateWorkout(id: number, input: WorkoutInput): Promise<void> {
+  const db = await getDb();
+  await db.runAsync(
+    `UPDATE workouts
+     SET date = ?, name = ?, duration_min = ?, intensity = ?, calories = ?, notes = ?
+     WHERE id = ?`,
+    input.date,
+    input.name,
+    input.durationMin ?? null,
+    input.intensity ?? null,
+    input.calories ?? null,
+    input.notes ?? null,
+    id,
+  );
+}
+
 export async function deleteWorkout(id: number): Promise<void> {
   const db = await getDb();
   await db.runAsync('DELETE FROM workouts WHERE id = ?', id);

@@ -223,3 +223,6 @@ export function checkMetricsAlerts(metrics: DailyMetrics[]): HealthAlert[] {
   }
   return alerts;
 }
+
+/** Alias for checkMetricsAlerts (prompt API). */
+export const checkHealthAlerts = checkMetricsAlerts;

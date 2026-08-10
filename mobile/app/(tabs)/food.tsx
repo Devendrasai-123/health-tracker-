@@ -17,12 +17,15 @@ import * as ImagePicker from 'expo-image-picker';
 
 import { Screen } from '@/components/Screen';
 import { EmptyState } from '@/components/EmptyState';
+import { MonthCalendar } from '@/components/MonthCalendar';
+import { GlassCard } from '@/components/GlassCard';
 import { DateField } from '@/components/DateField';
 import { NumberField } from '@/components/NumberField';
 import { formatDate, MEAL_TYPES, todayStr } from '@/constants/metrics';
 import { useDataStore } from '@/stores/data';
-import { addFoodLog, deleteFoodLog } from '@/services/meal-service';
-import type { FoodLogInput, MealType } from '@/types';
+import { addFoodLog, deleteFoodLog, updateFoodLog } from '@/services/meal-service';
+import { palette, radii } from '@/constants/theme';
+import type { FoodLogEntry, FoodLogInput, MealType } from '@/types';
 
 const MEAL_LABEL: Record<string, string> = {
   breakfast: 'Breakfast',
@@ -40,6 +43,7 @@ export default function FoodScreen() {
   const loadFood = useDataStore((s) => s.loadFood);
 
   const [showAdd, setShowAdd] = useState(false);
+  const [editing, setEditing] = useState<FoodLogEntry | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -63,35 +67,47 @@ export default function FoodScreen() {
       title="Food"
       subtitle={foodDate ? formatDate(foodDate) : 'Today'}
       action={
-        <Button mode="contained" compact onPress={() => setShowAdd(true)}>
+        <Button
+          mode="contained"
+          compact
+          buttonColor={palette.vermillion}
+          textColor="#fff"
+          style={{ borderRadius: radii.pill }}
+          onPress={() => {
+            setEditing(null);
+            setShowAdd(true);
+          }}>
           Add meal
         </Button>
       }>
-      <DateField value={foodDate} onChange={setFoodDate} maximumDate={new Date()} />
+      <MonthCalendar
+        value={foodDate}
+        onChange={setFoodDate}
+        maximumDate={new Date()}
+        markedDates={Object.keys(foodByDate).filter((d) => (foodByDate[d]?.length ?? 0) > 0)}
+      />
 
-      <Card style={[styles.summary, { backgroundColor: theme.colors.surface }]}>
-        <Card.Content>
-          <Text variant="labelLarge" style={{ color: theme.colors.onSurfaceVariant }}>
-            {formatDate(foodDate)}
-          </Text>
-          <View style={styles.summaryRow}>
-            <View>
-              <Text variant="headlineMedium" style={{ color: theme.colors.onSurface, fontWeight: '800' }}>
-                {calories}
-                <Text variant="bodySmall"> kcal</Text>
-              </Text>
-            </View>
-            <View style={styles.macroRow}>
-              <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
-                P {Math.round(protein)}g · C {Math.round(carbs)}g · F {Math.round(fat)}g
-              </Text>
-              <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
-                {meals.length} meal{meals.length === 1 ? '' : 's'}
-              </Text>
-            </View>
+      <GlassCard style={styles.summary} contentStyle={styles.summaryContent}>
+        <Text style={[styles.summaryLabel, { color: theme.colors.onSurfaceVariant }]}>
+          {formatDate(foodDate)}
+        </Text>
+        <View style={styles.summaryRow}>
+          <View>
+            <Text style={[styles.calories, { color: theme.colors.onSurface }]}>
+              {calories}
+              <Text style={styles.kcal}> kcal</Text>
+            </Text>
           </View>
-        </Card.Content>
-      </Card>
+          <View style={styles.macroRow}>
+            <Text style={{ color: theme.colors.onSurfaceVariant, fontSize: 13 }}>
+              P {Math.round(protein)}g · C {Math.round(carbs)}g · F {Math.round(fat)}g
+            </Text>
+            <Text style={{ color: theme.colors.onSurfaceVariant, fontSize: 13 }}>
+              {meals.length} meal{meals.length === 1 ? '' : 's'}
+            </Text>
+          </View>
+        </View>
+      </GlassCard>
 
       {meals.length === 0 ? (
         <EmptyState
@@ -102,7 +118,13 @@ export default function FoodScreen() {
       ) : (
         <View style={styles.list}>
           {meals.map((m) => (
-            <Card key={m.id} style={[styles.item, { backgroundColor: theme.colors.surface }]}>
+            <Card
+              key={m.id}
+              style={[styles.item, { backgroundColor: theme.colors.surface, borderColor: palette.chromeWhite }]}
+              onPress={() => {
+                setEditing(m);
+                setShowAdd(true);
+              }}>
               <Card.Content style={styles.itemContent}>
                 {m.photoUri ? (
                   <Image source={{ uri: m.photoUri }} style={styles.thumb} />
@@ -140,9 +162,14 @@ export default function FoodScreen() {
       <Portal>
         <AddMealModal
           visible={showAdd}
-          onDismiss={() => setShowAdd(false)}
+          initial={editing}
+          onDismiss={() => {
+            setShowAdd(false);
+            setEditing(null);
+          }}
           onSaved={() => {
             setShowAdd(false);
+            setEditing(null);
             loadFood(foodDate);
           }}
         />
@@ -153,11 +180,12 @@ export default function FoodScreen() {
 
 interface AddMealModalProps {
   visible: boolean;
+  initial: FoodLogEntry | null;
   onDismiss: () => void;
   onSaved: () => void;
 }
 
-function AddMealModal({ visible, onDismiss, onSaved }: AddMealModalProps) {
+function AddMealModal({ visible, initial, onDismiss, onSaved }: AddMealModalProps) {
   const theme = useTheme();
   const [date, setDate] = useState(todayStr());
   const [mealType, setMealType] = useState<MealType>('breakfast');
@@ -172,17 +200,28 @@ function AddMealModal({ visible, onDismiss, onSaved }: AddMealModalProps) {
 
   useEffect(() => {
     if (visible) {
-      setDate(todayStr());
-      setMealType('breakfast');
-      setName('');
-      setCalories('');
-      setProtein('');
-      setCarbs('');
-      setFat('');
-      setPhotoUri(null);
+      if (initial) {
+        setDate(initial.date);
+        setMealType(initial.mealType);
+        setName(initial.name);
+        setCalories(initial.calories != null ? String(initial.calories) : '');
+        setProtein(initial.protein != null ? String(initial.protein) : '');
+        setCarbs(initial.carbs != null ? String(initial.carbs) : '');
+        setFat(initial.fat != null ? String(initial.fat) : '');
+        setPhotoUri(initial.photoUri);
+      } else {
+        setDate(todayStr());
+        setMealType('breakfast');
+        setName('');
+        setCalories('');
+        setProtein('');
+        setCarbs('');
+        setFat('');
+        setPhotoUri(null);
+      }
       setError('');
     }
-  }, [visible]);
+  }, [visible, initial]);
 
   const pickPhoto = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({ quality: 0.6 });
@@ -207,7 +246,11 @@ function AddMealModal({ visible, onDismiss, onSaved }: AddMealModalProps) {
       fat: fat ? Number(fat) : null,
       photoUri,
     };
-    await addFoodLog(input);
+    if (initial) {
+      await updateFoodLog(initial.id, input);
+    } else {
+      await addFoodLog(input);
+    }
     setBusy(false);
     onSaved();
   };
@@ -218,7 +261,7 @@ function AddMealModal({ visible, onDismiss, onSaved }: AddMealModalProps) {
       onDismiss={onDismiss}
       contentContainerStyle={[styles.modal, { backgroundColor: theme.colors.surface }]}>
       <Text variant="titleLarge" style={{ color: theme.colors.onSurface, fontWeight: '700' }}>
-        Add meal
+        {initial ? 'Edit meal' : 'Add meal'}
       </Text>
       <DateField value={date} onChange={setDate} maximumDate={new Date()} />
 
@@ -283,8 +326,14 @@ function AddMealModal({ visible, onDismiss, onSaved }: AddMealModalProps) {
         <Button mode="text" onPress={onDismiss}>
           Cancel
         </Button>
-        <Button mode="contained" onPress={save} loading={busy} disabled={busy || !name.trim()}>
-          Save
+        <Button
+          mode="contained"
+          onPress={save}
+          loading={busy}
+          disabled={busy || !name.trim()}
+          buttonColor={palette.vermillion}
+          textColor="#fff">
+          {initial ? 'Update' : 'Save'}
         </Button>
       </View>
     </Modal>
@@ -292,16 +341,25 @@ function AddMealModal({ visible, onDismiss, onSaved }: AddMealModalProps) {
 }
 
 const styles = StyleSheet.create({
-  summary: { marginTop: 12, borderRadius: 16, elevation: 1 },
+  summary: { marginTop: 14 },
+  summaryContent: { paddingVertical: 14 },
+  summaryLabel: { fontSize: 13, fontWeight: '600' },
   summaryRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 6 },
+  calories: { fontSize: 34, fontWeight: '800', letterSpacing: -0.8 },
+  kcal: { fontSize: 14, fontWeight: '500' },
   macroRow: { alignItems: 'flex-end', gap: 2 },
   list: { gap: 8, marginTop: 12 },
-  item: { borderRadius: 14, elevation: 1 },
+  item: { borderRadius: radii.lg, elevation: 0, borderWidth: StyleSheet.hairlineWidth },
   itemContent: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10 },
   thumb: { width: 44, height: 44, borderRadius: 10, marginRight: 12 },
-  thumbEmpty: { alignItems: 'center', justifyContent: 'center' },
+  thumbEmpty: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderStyle: 'dashed',
+  },
   itemText: { flex: 1 },
-  modal: { margin: 24, borderRadius: 18, padding: 20, maxHeight: '88%' },
+  modal: { margin: 24, borderRadius: radii.xl, padding: 20, maxHeight: '88%' },
   fieldLabel: { marginTop: 12, marginBottom: 4, opacity: 0.8 },
   field: { marginTop: 10 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 },

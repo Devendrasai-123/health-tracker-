@@ -3,7 +3,10 @@ import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 're
 import { Button, HelperText, Text, TextInput, useTheme } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useAuthStore } from '@/stores/auth';
+import { GlassCard } from '@/components/GlassCard';
+import { palette, radii, spacing } from '@/constants/theme';
 
 export default function UnlockScreen() {
   const theme = useTheme();
@@ -15,6 +18,9 @@ export default function UnlockScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
 
+  const ink = theme.dark ? palette.orchidWhite : palette.warmBlack;
+  const muted = theme.dark ? palette.chromeWhite : palette.masala;
+
   const onSubmit = async () => {
     if (!password) return;
     setBusy(true);
@@ -23,78 +29,93 @@ export default function UnlockScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.root, { backgroundColor: theme.colors.background }]}>
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView contentContainerStyle={styles.content}>
-          <View style={styles.logoWrap}>
-            <View style={[styles.logo, { backgroundColor: theme.colors.primary }]}>
-              <MaterialCommunityIcons name="lock-outline" size={40} color={theme.colors.onPrimary} />
+    <View style={styles.root}>
+      <LinearGradient
+        colors={
+          theme.dark
+            ? [palette.warmBlack, '#3A2A22', palette.warmBlack]
+            : [palette.orchidWhite, '#FFE8DC', palette.orchidWhite]
+        }
+        style={StyleSheet.absoluteFill}
+      />
+      <SafeAreaView style={styles.flex}>
+        <KeyboardAvoidingView
+          style={styles.flex}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+            <View style={styles.logoWrap}>
+              <View style={styles.logo}>
+                <MaterialCommunityIcons name="lock-outline" size={36} color="#fff" />
+              </View>
+              <Text style={[styles.title, { color: ink }]}>lif.os</Text>
+              <Text style={[styles.subtitle, { color: muted }]}>
+                Unlock to access your health data
+              </Text>
             </View>
-            <Text variant="headlineMedium" style={[styles.title, { color: theme.colors.onSurface }]}>
-              lif.os
-            </Text>
-            <Text variant="bodyMedium" style={styles.subtitle}>
-              Unlock to access your health data
-            </Text>
-          </View>
 
-          <View style={styles.form}>
-            <TextInput
-              label="Passcode"
-              mode="outlined"
-              value={password}
-              onChangeText={(v) => {
-                setPassword(v);
-                clearError();
-              }}
-              secureTextEntry={!showPassword}
-              autoCapitalize="none"
-              autoFocus
-              right={
-                <TextInput.Icon
-                  icon={showPassword ? 'eye-off' : 'eye'}
-                  onPress={() => setShowPassword((v) => !v)}
-                />
-              }
-              style={styles.input}
-              onSubmitEditing={onSubmit}
-            />
-            <HelperText type="error" visible={!!error}>
-              {error}
-            </HelperText>
-            <Button
-              mode="contained"
-              onPress={onSubmit}
-              loading={busy}
-              disabled={busy || !password}
-              style={styles.button}>
-              Unlock
-            </Button>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+            <GlassCard contentStyle={styles.form}>
+              <TextInput
+                label="Passcode"
+                mode="outlined"
+                value={password}
+                onChangeText={(v) => {
+                  setPassword(v);
+                  clearError();
+                }}
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+                autoFocus
+                outlineColor={palette.chromeWhite}
+                activeOutlineColor={palette.vermillion}
+                right={
+                  <TextInput.Icon
+                    icon={showPassword ? 'eye-off' : 'eye'}
+                    onPress={() => setShowPassword((v) => !v)}
+                  />
+                }
+                style={styles.input}
+                onSubmitEditing={onSubmit}
+              />
+              <HelperText type="error" visible={!!error}>
+                {error}
+              </HelperText>
+              <Button
+                mode="contained"
+                onPress={onSubmit}
+                loading={busy}
+                disabled={busy || !password}
+                buttonColor={palette.vermillion}
+                textColor="#fff"
+                style={styles.button}
+                contentStyle={styles.buttonContent}>
+                Unlock
+              </Button>
+            </GlassCard>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
   flex: { flex: 1 },
-  content: { padding: 24, flexGrow: 1, justifyContent: 'center' },
-  logoWrap: { alignItems: 'center', marginBottom: 32 },
+  content: { padding: spacing.lg, flexGrow: 1, justifyContent: 'center' },
+  logoWrap: { alignItems: 'center', marginBottom: 28 },
   logo: {
     width: 72,
     height: 72,
-    borderRadius: 22,
+    borderRadius: radii.lg,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 14,
+    backgroundColor: palette.vermillion,
   },
-  title: { fontWeight: '800', letterSpacing: 1 },
-  subtitle: { textAlign: 'center', marginTop: 6, opacity: 0.8 },
+  title: { fontSize: 34, fontWeight: '800', letterSpacing: 1 },
+  subtitle: { textAlign: 'center', marginTop: 8, fontSize: 14 },
   form: {},
-  input: { marginTop: 12 },
-  button: { marginTop: 16, borderRadius: 12, paddingVertical: 4 },
+  input: { marginTop: 4, backgroundColor: 'transparent' },
+  button: { marginTop: 12, borderRadius: radii.md },
+  buttonContent: { paddingVertical: 6 },
 });
