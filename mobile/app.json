@@ -45,7 +45,13 @@
       ],
       "expo-sqlite",
       "expo-secure-store",
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Allow lif.os to use your location while traveling so parents can see your live trip."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

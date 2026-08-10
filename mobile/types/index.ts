@@ -223,3 +223,42 @@ export interface Investment {
   currentPrice: number | null;
   notes: string | null;
 }
+
+export interface TravelTrip {
+  id: number;
+  date: string;
+  title: string;
+  fromName: string;
+  toName: string;
+  mode: 'metro' | 'bus' | 'walk' | 'mixed';
+  totalPrice: number | null;
+  totalDistanceKm: number | null;
+  durationMin: number | null;
+  shareWithParents: boolean;
+  notes: string | null;
+  status: 'planned' | 'active' | 'done';
+}
+
+export interface TravelStop {
+  id: number;
+  tripId: number;
+  name: string;
+  area: string | null;
+  lat: number | null;
+  lng: number | null;
+  orderIndex: number;
+  distanceFromPrevKm: number | null;
+  priceFromPrev: number | null;
+  lineName: string | null;
+  lineColor: string | null;
+  action: string | null;
+}
+
+export interface TravelLive {
+  tripId: number | null;
+  lat: number | null;
+  lng: number | null;
+  heading: number | null;
+  updatedAt: string | null;
+  shareWithParents: boolean;
+}

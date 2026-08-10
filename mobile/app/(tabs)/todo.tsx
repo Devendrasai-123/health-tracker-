@@ -79,17 +79,24 @@ export default function TodoScreen() {
                 onPress={() => toggle(item)}
                 color={palette.vermillion}
               />
-              <Text
-                style={[
-                  styles.itemTitle,
-                  {
-                    color: theme.colors.onSurface,
-                    textDecorationLine: item.done ? 'line-through' : 'none',
-                    opacity: item.done ? 0.5 : 1,
-                  },
-                ]}>
-                {item.title}
-              </Text>
+              <View style={{ flex: 1 }}>
+                <Text
+                  style={[
+                    styles.itemTitle,
+                    {
+                      color: theme.colors.onSurface,
+                      textDecorationLine: item.done ? 'line-through' : 'none',
+                      opacity: item.done ? 0.5 : 1,
+                    },
+                  ]}>
+                  {item.title}
+                </Text>
+                {item.category === 'travel' ? (
+                  <Text style={{ color: palette.vermillion, fontSize: 11, marginTop: 2 }}>
+                    Travel · {item.dueDate ?? 'scheduled'}
+                  </Text>
+                ) : null}
+              </View>
               <Button mode="text" compact textColor={palette.masala} onPress={() => remove(item.id)}>
                 Delete
               </Button>

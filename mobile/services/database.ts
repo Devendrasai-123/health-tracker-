@@ -215,6 +215,55 @@ const MIGRATIONS: string[] = [
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
   `,
+  // v4 — travel / metro trips
+  `
+  CREATE TABLE IF NOT EXISTS travel_trips (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    date TEXT NOT NULL,
+    title TEXT NOT NULL,
+    from_name TEXT NOT NULL,
+    to_name TEXT NOT NULL,
+    mode TEXT NOT NULL DEFAULT 'metro',
+    total_price REAL,
+    total_distance_km REAL,
+    duration_min INTEGER,
+    share_with_parents INTEGER NOT NULL DEFAULT 0,
+    notes TEXT,
+    status TEXT NOT NULL DEFAULT 'planned',
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_travel_date ON travel_trips (date);
+
+  CREATE TABLE IF NOT EXISTS travel_stops (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    trip_id INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    area TEXT,
+    lat REAL,
+    lng REAL,
+    order_index INTEGER NOT NULL,
+    distance_from_prev_km REAL,
+    price_from_prev REAL,
+    line_name TEXT,
+    line_color TEXT,
+    action TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (trip_id) REFERENCES travel_trips(id) ON DELETE CASCADE
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_travel_stops_trip ON travel_stops (trip_id);
+
+  CREATE TABLE IF NOT EXISTS travel_live (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    trip_id INTEGER,
+    lat REAL,
+    lng REAL,
+    heading REAL,
+    updated_at TEXT,
+    share_with_parents INTEGER NOT NULL DEFAULT 0
+  );
+  `,
 ];
 
 let db: SQLite.SQLiteDatabase | null = null;
@@ -263,6 +312,9 @@ export async function resetDatabase(): Promise<void> {
     DROP TABLE IF EXISTS finance_transactions;
     DROP TABLE IF EXISTS finance_subscriptions;
     DROP TABLE IF EXISTS investments;
+    DROP TABLE IF EXISTS travel_trips;
+    DROP TABLE IF EXISTS travel_stops;
+    DROP TABLE IF EXISTS travel_live;
   `);
   await fresh.closeAsync();
   db = null;
