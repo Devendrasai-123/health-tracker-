@@ -1,4 +1,5 @@
 import { getDb } from './database';
+import { calculateWorkoutCalories } from '@/constants/workout-calculations';
 import type { WorkoutEntry, WorkoutInput } from '@/types';
 
 interface WorkoutRow {
@@ -27,6 +28,11 @@ function rowToWorkout(row: WorkoutRow): WorkoutEntry {
 
 export async function addWorkout(input: WorkoutInput): Promise<number> {
   const db = await getDb();
+  const calories =
+    input.calories ??
+    (input.durationMin
+      ? calculateWorkoutCalories(input.name, input.durationMin, input.intensity ?? null)
+      : null);
   const result = await db.runAsync(
     `INSERT INTO workouts (date, name, duration_min, intensity, calories, notes)
      VALUES (?, ?, ?, ?, ?, ?)`,
@@ -34,7 +40,7 @@ export async function addWorkout(input: WorkoutInput): Promise<number> {
     input.name,
     input.durationMin ?? null,
     input.intensity ?? null,
-    input.calories ?? null,
+    calories,
     input.notes ?? null,
   );
   return result.lastInsertRowId;
@@ -60,6 +66,11 @@ export async function listWorkoutsForDate(date: string): Promise<WorkoutEntry[]>
 
 export async function updateWorkout(id: number, input: WorkoutInput): Promise<void> {
   const db = await getDb();
+  const calories =
+    input.calories ??
+    (input.durationMin
+      ? calculateWorkoutCalories(input.name, input.durationMin, input.intensity ?? null)
+      : null);
   await db.runAsync(
     `UPDATE workouts
      SET date = ?, name = ?, duration_min = ?, intensity = ?, calories = ?, notes = ?
@@ -68,7 +79,7 @@ export async function updateWorkout(id: number, input: WorkoutInput): Promise<vo
     input.name,
     input.durationMin ?? null,
     input.intensity ?? null,
-    input.calories ?? null,
+    calories,
     input.notes ?? null,
     id,
   );

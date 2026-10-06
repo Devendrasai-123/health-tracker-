@@ -16,12 +16,22 @@ import { useFocusEffect } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 
 import { GlassCard } from '@/components/GlassCard';
+import { BodyMap } from '@/components/BodyMap';
 import { AlertBanner } from '@/components/AlertBanner';
 import { TrendChart } from '@/components/TrendChart';
 import { EmptyState } from '@/components/EmptyState';
 import { DateField } from '@/components/DateField';
 import { NumberField } from '@/components/NumberField';
 import { computeAlerts, formatDate, getTestTypeDef, shortDate, TEST_TYPES, todayStr } from '@/constants/metrics';
+import {
+  BODY_REGIONS,
+  REGION_STATUS_COLORS,
+  REGION_STATUS_LABELS,
+  getRegion,
+  summarizeRegions,
+  type RegionId,
+  type RegionStatus,
+} from '@/constants/body-map';
 import { matchesSearch } from '@/utils/helpers';
 import { useDataStore } from '@/stores/data';
 import { addBloodTest, deleteBloodTest, listBloodTestsByType, updateBloodTest } from '@/services/blood-test-service';
@@ -38,6 +48,7 @@ export default function BodyReportsScreen() {
   const [query, setQuery] = useState('');
   const [selectedType, setSelectedType] = useState<string>(TEST_TYPES[0].label);
   const [typeData, setTypeData] = useState<BloodTest[]>([]);
+  const [selectedRegion, setSelectedRegion] = useState<RegionId | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -49,19 +60,45 @@ export default function BodyReportsScreen() {
     listBloodTestsByType(selectedType).then(setTypeData).catch(() => setTypeData([]));
   }, [selectedType]);
 
+  const regionSummaries = useMemo(
+    () =>
+      summarizeRegions(
+        bloodTests.map((t) => ({
+          testType: t.testType,
+          value: t.value,
+          unit: t.unit,
+          date: t.date,
+        })),
+      ),
+    [bloodTests],
+  );
+
+  const regionStatuses = useMemo(() => {
+    const out = {} as Record<RegionId, RegionStatus>;
+    for (const region of BODY_REGIONS) {
+      out[region.id] = regionSummaries[region.id].status;
+    }
+    return out;
+  }, [regionSummaries]);
+
+  const activeRegion = selectedRegion ? getRegion(selectedRegion) : null;
+  const activeSummary = selectedRegion ? regionSummaries[selectedRegion] : null;
+
   const filtered = useMemo(
     () =>
-      bloodTests.filter(
-        (t) =>
+      bloodTests.filter((t) => {
+        if (activeRegion && !activeRegion.tests.includes(t.testType)) return false;
+        return (
           matchesSearch(t.testType, query) ||
           matchesSearch(t.date, query) ||
-          matchesSearch(String(t.value), query),
-      ),
-    [bloodTests, query],
+          matchesSearch(String(t.value), query)
+        );
+      }),
+    [bloodTests, query, activeRegion],
   );
 
   const alerts = computeAlerts(
-    bloodTests.map((t) => ({ testType: t.testType, value: t.value, unit: t.unit })),
+    bloodTests.map((t) => ({ testType: t.testType, value: t.value, unit: t.unit, date: t.date })),
   );
 
   const remove = async (id: number) => {
@@ -78,17 +115,80 @@ export default function BodyReportsScreen() {
       style={{ flex: 1, backgroundColor: theme.colors.background }}
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled">
-      <GlassCard contentStyle={styles.hero3d}>
-        <View style={[styles.bodySilhouette, { borderColor: palette.chromeWhite }]}>
-          <MaterialCommunityIcons name="human" size={72} color={palette.vermillion} />
-        </View>
-        <View style={styles.heroText}>
-          <Text style={[styles.heroTitle, { color: ink }]}>3D Body</Text>
-          <Text style={[styles.heroSub, { color: muted }]}>
-            Interactive 3D body map comes next. Labs & encrypted reports are live now.
-          </Text>
+      <GlassCard contentStyle={styles.mapHero}>
+        <View style={styles.mapRow}>
+          <BodyMap
+            statuses={regionStatuses}
+            selected={selectedRegion}
+            onSelect={(id) => setSelectedRegion((prev) => (prev === id ? null : id))}
+            width={158}
+          />
+          <View style={styles.legend}>
+            <Text style={[styles.heroTitle, { color: ink }]}>Body map</Text>
+            <Text style={[styles.heroSub, { color: muted }]}>
+              Tap a region to see the labs behind it.
+            </Text>
+            {(['ok', 'low', 'high', 'none'] as RegionStatus[]).map((s) => (
+              <View key={s} style={styles.legendRow}>
+                <View style={[styles.legendDot, { backgroundColor: REGION_STATUS_COLORS[s] }]} />
+                <Text style={[styles.legendLabel, { color: muted }]}>
+                  {REGION_STATUS_LABELS[s]}
+                </Text>
+              </View>
+            ))}
+          </View>
         </View>
       </GlassCard>
+
+      {activeRegion && activeSummary ? (
+        <GlassCard style={styles.regionCard} contentStyle={styles.regionContent}>
+          <View style={styles.regionHeader}>
+            <View
+              style={[
+                styles.regionDot,
+                { backgroundColor: REGION_STATUS_COLORS[activeSummary.status] },
+              ]}
+            />
+            <Text style={[styles.regionName, { color: ink }]}>{activeRegion.name}</Text>
+            <View style={{ flex: 1 }} />
+            <Button compact mode="text" textColor={muted} onPress={() => setSelectedRegion(null)}>
+              Clear
+            </Button>
+          </View>
+          <Text style={[styles.regionBlurb, { color: muted }]}>{activeRegion.blurb}</Text>
+          {activeSummary.tests.length === 0 ? (
+            <Text style={[styles.regionEmpty, { color: muted }]}>
+              No labs logged for this region yet. Add a test to light it up.
+            </Text>
+          ) : (
+            <View style={styles.regionTests}>
+              {activeSummary.tests.map((p) => (
+                <View key={p.testType} style={styles.regionTestRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: ink, fontWeight: '700' }}>{p.testType}</Text>
+                    <Text style={{ color: muted, fontSize: 12 }}>
+                      {p.value} {p.unit} · {formatDate(p.date)}
+                    </Text>
+                  </View>
+                  <Chip
+                    compact
+                    style={styles.statusChip}
+                    textStyle={{ color: REGION_STATUS_COLORS[p.status], fontSize: 11 }}>
+                    {REGION_STATUS_LABELS[p.status]}
+                  </Chip>
+                  <Button
+                    compact
+                    mode="text"
+                    textColor={palette.vermillion}
+                    onPress={() => setSelectedType(p.testType)}>
+                    Trend
+                  </Button>
+                </View>
+              ))}
+            </View>
+          )}
+        </GlassCard>
+      ) : null}
 
       <View style={styles.headerRow}>
         <Text style={[styles.sectionTitle, { color: ink }]}>Blood tests</Text>
@@ -116,7 +216,7 @@ export default function BodyReportsScreen() {
       <AlertBanner alerts={alerts} />
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
-        {TEST_TYPES.slice(0, 10).map((t) => (
+        {TEST_TYPES.map((t) => (
           <Chip
             key={t.label}
             selected={t.label === selectedType}
@@ -136,7 +236,23 @@ export default function BodyReportsScreen() {
       />
 
       {filtered.length === 0 ? (
-        <EmptyState icon="flask-outline" title="No labs yet" message="Add your first encrypted blood test." />
+        <EmptyState
+          icon="flask-outline"
+          title={
+            activeRegion
+              ? `No labs for ${activeRegion.name}`
+              : query
+                ? 'No matching labs'
+                : 'No labs yet'
+          }
+          message={
+            activeRegion
+              ? 'Log one of the panels this region tracks, or clear the region filter.'
+              : query
+                ? 'Try a different test name, date or value.'
+                : 'Add your first encrypted blood test.'
+          }
+        />
       ) : (
         <View style={styles.list}>
           {filtered.map((t) => (
@@ -321,18 +437,22 @@ function AddBloodTestModal({
 
 const styles = StyleSheet.create({
   content: { padding: 16, paddingBottom: 120 },
-  hero3d: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
-  bodySilhouette: {
-    width: 88,
-    height: 88,
-    borderRadius: 24,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 14,
-    backgroundColor: 'rgba(235,94,40,0.08)',
-  },
-  heroText: { flex: 1 },
+  mapHero: { paddingVertical: 12 },
+  mapRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  legend: { flex: 1 },
+  legendRow: { flexDirection: 'row', alignItems: 'center', marginTop: 10 },
+  legendDot: { width: 10, height: 10, borderRadius: 5, marginRight: 8 },
+  legendLabel: { fontSize: 12, fontWeight: '600' },
+  regionCard: { marginTop: 14 },
+  regionContent: { paddingVertical: 12 },
+  regionHeader: { flexDirection: 'row', alignItems: 'center' },
+  regionDot: { width: 12, height: 12, borderRadius: 6, marginRight: 8 },
+  regionName: { fontSize: 17, fontWeight: '800' },
+  regionBlurb: { fontSize: 12.5, marginTop: 4, lineHeight: 17 },
+  regionEmpty: { fontSize: 12.5, marginTop: 10, fontStyle: 'italic' },
+  regionTests: { marginTop: 6 },
+  regionTestRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8 },
+  statusChip: { height: 26, backgroundColor: 'transparent' },
   heroTitle: { fontSize: 20, fontWeight: '800' },
   heroSub: { fontSize: 13, marginTop: 4, lineHeight: 18 },
   headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },

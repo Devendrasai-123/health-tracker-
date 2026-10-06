@@ -19,6 +19,7 @@ import { Screen } from '@/components/Screen';
 import { EmptyState } from '@/components/EmptyState';
 import { MonthCalendar } from '@/components/MonthCalendar';
 import { GlassCard } from '@/components/GlassCard';
+import { WeeklyFoodSummary } from '@/components/WeeklyFoodSummary';
 import { DateField } from '@/components/DateField';
 import { NumberField } from '@/components/NumberField';
 import { formatDate, MEAL_TYPES, todayStr } from '@/constants/metrics';
@@ -44,6 +45,8 @@ export default function FoodScreen() {
 
   const [showAdd, setShowAdd] = useState(false);
   const [editing, setEditing] = useState<FoodLogEntry | null>(null);
+  const [viewMode, setViewMode] = useState<'daily' | 'weekly'>('daily');
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useFocusEffect(
     useCallback(() => {
@@ -87,6 +90,25 @@ export default function FoodScreen() {
         markedDates={Object.keys(foodByDate).filter((d) => (foodByDate[d]?.length ?? 0) > 0)}
       />
 
+      <View style={styles.viewToggle}>
+        <Button
+          mode={viewMode === 'daily' ? 'contained' : 'outlined'}
+          onPress={() => setViewMode('daily')}
+          compact>
+          Daily
+        </Button>
+        <Button
+          mode={viewMode === 'weekly' ? 'contained' : 'outlined'}
+          onPress={() => setViewMode('weekly')}
+          compact>
+          Weekly
+        </Button>
+      </View>
+
+      {viewMode === 'weekly' ? (
+        <WeeklyFoodSummary endDate={foodDate} refreshKey={refreshKey} />
+      ) : (
+        <>
       <GlassCard style={styles.summary} contentStyle={styles.summaryContent}>
         <Text style={[styles.summaryLabel, { color: theme.colors.onSurfaceVariant }]}>
           {formatDate(foodDate)}
@@ -158,8 +180,10 @@ export default function FoodScreen() {
           ))}
         </View>
       )}
+        </>
+      )}
 
-      <Portal>
+      {viewMode === 'daily' ? <Portal>
         <AddMealModal
           visible={showAdd}
           initial={editing}
@@ -171,9 +195,10 @@ export default function FoodScreen() {
             setShowAdd(false);
             setEditing(null);
             loadFood(foodDate);
+            setRefreshKey((value) => value + 1);
           }}
         />
-      </Portal>
+      </Portal> : null}
     </Screen>
   );
 }
@@ -341,6 +366,7 @@ function AddMealModal({ visible, initial, onDismiss, onSaved }: AddMealModalProp
 }
 
 const styles = StyleSheet.create({
+  viewToggle: { flexDirection: 'row', gap: 8, marginTop: 12 },
   summary: { marginTop: 14 },
   summaryContent: { paddingVertical: 14 },
   summaryLabel: { fontSize: 13, fontWeight: '600' },

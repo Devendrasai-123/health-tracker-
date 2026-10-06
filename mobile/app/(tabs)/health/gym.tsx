@@ -79,7 +79,7 @@ export default function GymScreen() {
         <Button
           mode="outlined"
           style={styles.activityBtn}
-          textColor={palette.warmBlack}
+          textColor={ink}
           onPress={() => setShowActivity(true)}>
           Log steps / sleep / sitting
         </Button>
@@ -308,6 +308,7 @@ function ActivityModal({
         sleepHours: sleep ? Number(sleep) : null,
         stress: stress ? Number(stress) : null,
         heartRate: heartRate ? Number(heartRate) : null,
+        weight: initial?.weight ?? null,
       }),
       notes: notesBits.length ? notesBits.join(' · ') : null,
     };

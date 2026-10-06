@@ -14,36 +14,32 @@ export interface RecoveryFactors {
   sleepHours: number | null;
   stress: number | null;
   heartRate: number | null;
+  weight: number | null;
 }
 
 export function calculateRecoveryScore(f: RecoveryFactors): number | null {
-  let score = 0;
-  let components = 0;
+  const hasMetric = f.sleepHours != null || f.stress != null || f.heartRate != null || f.weight != null;
+  if (!hasMetric) return null;
 
+  let score = 50;
   if (f.sleepHours != null) {
-    components++;
-    if (f.sleepHours >= 8) score += 40;
-    else if (f.sleepHours >= 7) score += 34;
-    else if (f.sleepHours >= 6) score += 25;
-    else if (f.sleepHours >= 5) score += 15;
-    else score += 5;
+    if (f.sleepHours >= 7 && f.sleepHours <= 9) score += 20;
+    else if ((f.sleepHours >= 5 && f.sleepHours < 7) || (f.sleepHours > 9 && f.sleepHours <= 10)) score += 10;
   }
-
-  if (f.stress != null) {
-    components++;
-    score += Math.round(35 * ((10 - clamp(f.stress, 1, 10)) / 9));
-  }
-
   if (f.heartRate != null) {
-    components++;
-    if (f.heartRate <= 60) score += 25;
-    else if (f.heartRate <= 70) score += 19;
-    else if (f.heartRate <= 80) score += 12;
-    else score += 5;
+    if (f.heartRate >= 60 && f.heartRate <= 100) score += 20;
+    else if ((f.heartRate >= 50 && f.heartRate < 60) || (f.heartRate > 100 && f.heartRate <= 120)) score += 10;
   }
-
-  if (components === 0) return null;
-  return clamp(Math.round(score), 0, 100);
+  if (f.stress != null) {
+    if (f.stress >= 1 && f.stress <= 3) score += 20;
+    else if (f.stress >= 4 && f.stress <= 6) score += 10;
+  }
+  if (f.weight != null) {
+    const assumedHeightMeters = 1.75;
+    const bmi = f.weight / (assumedHeightMeters * assumedHeightMeters);
+    if (bmi >= 18.5 && bmi <= 25) score += 10;
+  }
+  return clamp(score, 0, 100);
 }
 
 export function calculateRecoveryFromMetrics(metrics: DailyMetrics[]): number | null {
@@ -53,6 +49,7 @@ export function calculateRecoveryFromMetrics(metrics: DailyMetrics[]): number | 
     sleepHours: latest.sleepHours,
     stress: latest.stress,
     heartRate: latest.heartRate,
+    weight: latest.weight,
   });
 }
 

@@ -20,8 +20,19 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   loaded: false,
 
   load: async () => {
-    const settings = await getSettings();
-    set({ theme: settings.theme, units: settings.units, syncEnabled: settings.syncEnabled, loaded: true });
+    try {
+      const settings = await getSettings();
+      set({
+        theme: settings.theme,
+        units: settings.units,
+        syncEnabled: settings.syncEnabled,
+        loaded: true,
+      });
+    } catch (e) {
+      // Fall back to defaults rather than blocking boot on a storage failure.
+      console.error('Settings load failed, using defaults:', e);
+      set({ loaded: true });
+    }
   },
 
   setTheme: async (theme) => {

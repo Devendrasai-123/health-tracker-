@@ -56,15 +56,15 @@ export default function TabLayout() {
           borderTopColor: isDark ? 'rgba(204,197,185,0.15)' : 'rgba(204,197,185,0.45)',
           borderTopWidth: StyleSheet.hairlineWidth,
           elevation: 0,
-          height: 68,
-          paddingBottom: 10,
-          paddingTop: 8,
+          height: 76,
+          paddingBottom: 13,
+          paddingTop: 10,
         },
         tabBarBackground: () =>
           Platform.OS === 'ios' ? (
-            <BlurView intensity={60} tint={isDark ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
+            <BlurView intensity={80} tint={isDark ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
           ) : null,
-        tabBarLabelStyle: { fontSize: 10, fontWeight: '700' },
+        tabBarLabelStyle: { fontSize: 10, fontWeight: '800', letterSpacing: 0.2 },
       }}>
       <Tabs.Screen
         name="todo"

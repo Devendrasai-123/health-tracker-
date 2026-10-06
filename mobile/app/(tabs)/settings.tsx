@@ -28,6 +28,8 @@ export default function SettingsScreen() {
   const theme = useTheme();
   const themePref = useSettingsStore((s) => s.theme);
   const setTheme = useSettingsStore((s) => s.setTheme);
+  const units = useSettingsStore((s) => s.units);
+  const setUnits = useSettingsStore((s) => s.setUnits);
   const syncEnabled = useSettingsStore((s) => s.syncEnabled);
   const setSyncEnabled = useSettingsStore((s) => s.setSyncEnabled);
   const lock = useAuthStore((s) => s.lock);
@@ -106,6 +108,31 @@ export default function SettingsScreen() {
               { value: 'light', label: 'Light' },
               { value: 'dark', label: 'Dark' },
               { value: 'system', label: 'System' },
+            ]}
+          />
+        </Card.Content>
+      </Card>
+
+      <Card style={[styles.card, { backgroundColor: theme.colors.surface }]}>
+        <Card.Title
+          title="Units"
+          titleVariant="titleMedium"
+          left={(props) => (
+            <MaterialCommunityIcons
+              {...props}
+              name="ruler"
+              size={22}
+              color={theme.colors.primary}
+            />
+          )}
+        />
+        <Card.Content>
+          <SegmentedButtons
+            value={units}
+            onValueChange={(value) => setUnits(value as 'metric' | 'imperial')}
+            buttons={[
+              { value: 'metric', label: 'Metric (kg)' },
+              { value: 'imperial', label: 'Imperial (lb)' },
             ]}
           />
         </Card.Content>

@@ -9,34 +9,83 @@ import { palette, radii } from '@/constants/theme';
 type IconName = keyof typeof MaterialCommunityIcons.glyphMap;
 
 const SECTIONS: {
-  href: '/(tabs)/health/body' | '/(tabs)/health/fuel' | '/(tabs)/health/gym' | '/(tabs)/health/grooming';
+  href:
+    | '/(tabs)/dashboard'
+    | '/(tabs)/health/body'
+    | '/(tabs)/health/fuel'
+    | '/(tabs)/health/gym'
+    | '/(tabs)/health/grooming'
+    | '/(tabs)/health/calendar'
+    | '/(tabs)/health/brain'
+    | '/(tabs)/health/finance'
+    | '/(tabs)/health/education';
   title: string;
   subtitle: string;
   icon: IconName;
+  color: string;
 }[] = [
+  {
+    href: '/(tabs)/dashboard',
+    title: 'Today',
+    subtitle: 'Log weight, recovery & daily trends',
+    icon: 'chart-line',
+    color: palette.lime,
+  },
   {
     href: '/(tabs)/health/body',
     title: 'Body Reports',
-    subtitle: 'Labs, blood tests & 3D body overview',
+    subtitle: 'Interactive body map & encrypted blood tests',
     icon: 'human',
+    color: palette.lavender,
   },
   {
     href: '/(tabs)/health/fuel',
     title: 'Hydration & Food',
     subtitle: 'Water, meals, macros — everything you consume',
     icon: 'cup-water',
+    color: '#BFE5D2',
   },
   {
     href: '/(tabs)/health/gym',
     title: 'Gym & Activity',
     subtitle: 'Workouts, steps, sleep, sitting & standing',
     icon: 'dumbbell',
+    color: palette.vermillion,
   },
   {
     href: '/(tabs)/health/grooming',
     title: 'Grooming',
     subtitle: 'Wardrobe, skincare, schedules & lookbook',
     icon: 'hanger',
+    color: '#F2D39B',
+  },
+  {
+    href: '/(tabs)/health/calendar',
+    title: 'Health Calendar',
+    subtitle: 'Review daily metrics, meals and workouts by date',
+    icon: 'calendar-month',
+    color: palette.lavender,
+  },
+  {
+    href: '/(tabs)/health/brain',
+    title: 'Mind & Brain',
+    subtitle: 'Track stress, sleep and recovery habits',
+    icon: 'head-outline',
+    color: '#C8E7D0',
+  },
+  {
+    href: '/(tabs)/health/finance',
+    title: 'Health Finance',
+    subtitle: 'Plan health spending and recurring care costs',
+    icon: 'cash-multiple',
+    color: '#D8D4C8',
+  },
+  {
+    href: '/(tabs)/health/education',
+    title: 'Health Education',
+    subtitle: 'Learn how to interpret your health trends',
+    icon: 'school-outline',
+    color: palette.lime,
   },
 ];
 
@@ -48,21 +97,21 @@ export default function HealthHubScreen() {
 
   return (
     <Screen title="Health" subtitle="Your body systems — pick a section">
-      <View style={styles.list}>
+      <View style={styles.grid}>
         {SECTIONS.map((section) => (
           <Pressable
             key={section.href}
             onPress={() => router.push(section.href as Href)}
-            style={({ pressed }) => [{ opacity: pressed ? 0.85 : 1 }]}>
+            style={({ pressed }) => [styles.tile, { opacity: pressed ? 0.85 : 1 }]}>
             <GlassCard contentStyle={styles.card}>
-              <View style={[styles.iconWrap, { backgroundColor: palette.vermillion + '18' }]}>
-                <MaterialCommunityIcons name={section.icon} size={26} color={palette.vermillion} />
+              <View style={[styles.iconWrap, { backgroundColor: section.color }]}>
+                <MaterialCommunityIcons name={section.icon} size={24} color={palette.warmBlack} />
               </View>
               <View style={styles.text}>
                 <Text style={[styles.title, { color: ink }]}>{section.title}</Text>
                 <Text style={[styles.subtitle, { color: muted }]}>{section.subtitle}</Text>
               </View>
-              <MaterialCommunityIcons name="chevron-right" size={24} color={muted} />
+              <MaterialCommunityIcons name="arrow-up-right" size={20} color={muted} />
             </GlassCard>
           </Pressable>
         ))}
@@ -72,11 +121,12 @@ export default function HealthHubScreen() {
 }
 
 const styles = StyleSheet.create({
-  list: { gap: 12, marginTop: 4 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 4 },
+  tile: { width: '48.2%' },
   card: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 18,
+    minHeight: 174,
+    paddingVertical: 16,
+    justifyContent: 'space-between',
   },
   iconWrap: {
     width: 52,
@@ -84,9 +134,9 @@ const styles = StyleSheet.create({
     borderRadius: radii.md,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 14,
+    marginBottom: 14,
   },
   text: { flex: 1 },
-  title: { fontSize: 18, fontWeight: '800', letterSpacing: -0.2 },
-  subtitle: { fontSize: 13, marginTop: 3, lineHeight: 18 },
+  title: { fontSize: 17, fontWeight: '900', letterSpacing: -0.3 },
+  subtitle: { fontSize: 12, marginTop: 5, lineHeight: 17 },
 });

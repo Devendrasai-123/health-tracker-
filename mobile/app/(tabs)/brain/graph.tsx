@@ -122,7 +122,7 @@ export default function KnowledgeGraphScreen() {
   return (
     <View style={[styles.root, { backgroundColor: '#141210' }]}>
       <Text style={styles.hint}>
-        Tap a niche to open its subtopics. Long-press a node to mark learned.
+        Tap a niche to open its subtopics, then toggle learned from the panel.
       </Text>
 
       <View style={styles.graphWrap}>
@@ -154,13 +154,6 @@ export default function KnowledgeGraphScreen() {
                 stroke={n.color}
                 strokeWidth={2.5}
                 opacity={0.95}
-                onPress={() => {
-                  if (n.parentId == null) setSelectedId((id) => (id === n.id ? null : n.id));
-                }}
-                onLongPress={async () => {
-                  await setNodeLearned(n.id, !n.learned);
-                  await reload();
-                }}
               />
             );
           })}
@@ -234,6 +227,17 @@ export default function KnowledgeGraphScreen() {
                 Add subtopic
               </Button>
               <Button
+                mode={selected.learned ? 'contained-tonal' : 'outlined'}
+                icon={selected.learned ? 'check-circle' : 'circle-outline'}
+                textColor={selected.learned ? undefined : palette.masala}
+                compact
+                onPress={async () => {
+                  await setNodeLearned(selected.id, !selected.learned);
+                  await reload();
+                }}>
+                {selected.learned ? 'Learned' : 'Mark learned'}
+              </Button>
+              <Button
                 mode="text"
                 textColor="#C62828"
                 compact
@@ -249,6 +253,10 @@ export default function KnowledgeGraphScreen() {
               <Pressable
                 key={c.id}
                 style={styles.childRow}
+                onPress={async () => {
+                  await setNodeLearned(c.id, !c.learned);
+                  await reload();
+                }}
                 onLongPress={async () => {
                   await setNodeLearned(c.id, !c.learned);
                   await reload();

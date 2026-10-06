@@ -102,7 +102,7 @@ export default function FuelScreen() {
                 mode="outlined"
                 compact
                 onPress={() => addWater(ml)}
-                textColor={palette.warmBlack}
+                textColor={ink}
                 style={styles.quickBtn}>
                 +{ml}ml
               </Button>

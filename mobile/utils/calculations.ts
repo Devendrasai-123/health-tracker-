@@ -13,6 +13,7 @@ export function calculateRecoveryScore(
       heartRate,
       sleepHours,
       stress: stressLevel,
+      weight: null,
     }) ?? 50
   );
 }

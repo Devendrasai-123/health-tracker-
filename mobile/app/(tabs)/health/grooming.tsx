@@ -228,7 +228,7 @@ export default function GroomingScreen() {
           <FAB
             icon="plus"
             style={[styles.fabLeft, { backgroundColor: theme.colors.surface }]}
-            color={palette.warmBlack}
+            color={ink}
             onPress={() => {
               setPendingPhoto(null);
               setShowAddCloth(true);

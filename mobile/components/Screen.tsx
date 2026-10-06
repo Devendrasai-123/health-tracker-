@@ -2,7 +2,7 @@ import { type ReactNode } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { Text, useTheme } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { palette, radii, spacing } from '@/constants/theme';
+import { palette, spacing } from '@/constants/theme';
 
 interface ScreenProps {
   title: string;
@@ -51,12 +51,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: spacing.md,
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.md,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.lg,
   },
   headerText: { flex: 1, paddingRight: 12 },
-  title: { fontSize: 28, fontWeight: '800', letterSpacing: -0.5 },
-  subtitle: { fontSize: 13, fontWeight: '500', marginTop: 2, opacity: 0.85 },
+  title: { fontSize: 32, fontWeight: '900', letterSpacing: -1.2 },
+  subtitle: { fontSize: 13, fontWeight: '600', marginTop: 5, opacity: 0.72, letterSpacing: 0.2 },
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: spacing.md, paddingBottom: 140 },
 });

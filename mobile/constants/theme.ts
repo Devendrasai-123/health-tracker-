@@ -2,11 +2,14 @@ import { MD3DarkTheme, MD3LightTheme, type MD3Theme } from 'react-native-paper';
 
 /** Official lif.os brand palette — Soft Glass Bento */
 export const palette = {
-  orchidWhite: '#FFFCF2',
-  chromeWhite: '#CCC5B9',
-  masala: '#403D39',
-  warmBlack: '#252422',
-  vermillion: '#EB5E28',
+  orchidWhite: '#F4F2EC',
+  chromeWhite: '#C9C8C1',
+  masala: '#5C5D58',
+  warmBlack: '#111214',
+  vermillion: '#F15A24',
+  lime: '#D8EF68',
+  lavender: '#E6E0F7',
+  paper: '#FFFEFA',
 } as const;
 
 export const brandColors = {
@@ -16,11 +19,11 @@ export const brandColors = {
   tertiary: palette.chromeWhite,
   background: palette.orchidWhite,
   surface: '#FFFFFF',
-  surfaceVariant: '#F3EFE6',
+  surfaceVariant: '#EAE8E1',
   outline: palette.chromeWhite,
   error: '#C62828',
   warning: palette.vermillion,
-  success: '#3D7A5A',
+  success: '#668A3C',
   glassLight: 'rgba(255, 252, 242, 0.72)',
   glassDark: 'rgba(64, 61, 57, 0.55)',
   glassBorder: 'rgba(204, 197, 185, 0.55)',
@@ -114,4 +117,33 @@ export const darkTheme: MD3Theme = {
 
 export function getTheme(mode: 'light' | 'dark'): MD3Theme {
   return mode === 'dark' ? darkTheme : lightTheme;
+}
+
+/**
+ * Text/icon colour for content drawn on a card or screen background.
+ * Always prefer this over hardcoding palette.warmBlack, which is invisible
+ * in dark mode.
+ */
+export function inkOn(isDark: boolean): string {
+  return isDark ? palette.orchidWhite : palette.warmBlack;
+}
+
+/** Secondary/muted text colour for content on a card or screen background. */
+export function mutedOn(isDark: boolean): string {
+  return isDark ? palette.chromeWhite : palette.masala;
+}
+
+/**
+ * Shared native-stack screen options so sub-screen headers follow the theme.
+ * Use this instead of hardcoding palette.orchidWhite / palette.warmBlack.
+ */
+export function stackScreenOptions(isDark: boolean) {
+  const background = isDark ? darkTheme.colors.background : palette.orchidWhite;
+  return {
+    headerStyle: { backgroundColor: background },
+    headerTintColor: inkOn(isDark),
+    headerTitleStyle: { fontWeight: '700' as const },
+    headerShadowVisible: false,
+    contentStyle: { backgroundColor: background },
+  };
 }

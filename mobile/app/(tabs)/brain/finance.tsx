@@ -94,7 +94,7 @@ export default function FinanceScreen() {
         <Button
           mode="outlined"
           icon="chart-line"
-          textColor={palette.warmBlack}
+          textColor={ink}
           style={styles.investBtn}
           onPress={() => router.push('/(tabs)/brain/investments' as Href)}>
           Stocks & Crypto →

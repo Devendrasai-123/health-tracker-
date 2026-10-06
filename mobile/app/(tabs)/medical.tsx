@@ -63,7 +63,7 @@ export default function MedicalScreen() {
   );
 
   const alerts = computeAlerts(
-    bloodTests.map((t) => ({ testType: t.testType, value: t.value, unit: t.unit })),
+    bloodTests.map((t) => ({ testType: t.testType, value: t.value, unit: t.unit, date: t.date })),
   );
 
   const remove = async (id: number) => {
@@ -279,11 +279,16 @@ function AddBloodTestModal({ visible, initial, onDismiss, onSaved }: AddBloodTes
       setError('Enter a test value.');
       return;
     }
+    const parsedValue = Number(value);
+    if (!Number.isFinite(parsedValue)) {
+      setError('Test value must be a number.');
+      return;
+    }
     setBusy(true);
     const input: BloodTestInput = {
       date,
       testType,
-      value: Number(value),
+      value: parsedValue,
       unit: unit || getTestTypeDef(testType).unit,
       notes: notes || null,
       photoUri,

@@ -1,11 +1,16 @@
 import { useCallback, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { Button, Text, TextInput, useTheme } from 'react-native-paper';
+import { Button, HelperText, Text, TextInput, useTheme } from 'react-native-paper';
 import { useFocusEffect } from 'expo-router';
 import { GlassCard } from '@/components/GlassCard';
 import { useDataStore } from '@/stores/data';
 import { generateInsights, predictStress } from '@/services/ai-engine';
-import { explainBloodTest, getHealthAdvice, isGemmaAvailable } from '@/services/gemma-api';
+import {
+  GEMMA_OFFLINE_HINT,
+  explainBloodTest,
+  getHealthAdvice,
+  isGemmaAvailable,
+} from '@/services/gemma-api';
 import { palette, radii } from '@/constants/theme';
 
 export default function InsightsScreen() {
@@ -68,13 +73,30 @@ export default function InsightsScreen() {
           <Text style={[styles.hint, { color: muted }]}>
             Gemma: {gemmaOk ? 'online' : 'offline'}
           </Text>
+          {!gemmaOk ? (
+            <HelperText type="info" visible style={styles.hint}>
+              {GEMMA_OFFLINE_HINT}
+            </HelperText>
+          ) : null}
         </GlassCard>
 
         <View style={styles.actions}>
-          <Button mode="contained" buttonColor={palette.vermillion} textColor="#fff" loading={busy} onPress={askAdvice} style={styles.btn}>
+          <Button
+            mode="contained"
+            buttonColor={palette.vermillion}
+            textColor="#fff"
+            loading={busy}
+            disabled={busy || !gemmaOk}
+            onPress={askAdvice}
+            style={styles.btn}>
             Health advice
           </Button>
-          <Button mode="outlined" textColor={palette.warmBlack} onPress={explainLatest} style={styles.btn}>
+          <Button
+            mode="outlined"
+            textColor={ink}
+            disabled={busy || !gemmaOk}
+            onPress={explainLatest}
+            style={styles.btn}>
             Explain latest lab
           </Button>
         </View>

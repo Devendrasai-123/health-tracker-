@@ -55,11 +55,16 @@ export function GlassCard({
 
 const styles = StyleSheet.create({
   wrap: {
-    borderRadius: radii.lg,
+    borderRadius: radii.xl,
     overflow: 'hidden',
     borderWidth: StyleSheet.hairlineWidth * 2,
+    shadowColor: '#111214',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.06,
+    shadowRadius: 18,
+    elevation: 1,
   },
   content: {
-    padding: 16,
+    padding: 18,
   },
 });

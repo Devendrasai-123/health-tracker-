@@ -1,6 +1,6 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { StyleSheet, useColorScheme, View } from 'react-native';
-import { ActivityIndicator, PaperProvider } from 'react-native-paper';
+import { ActivityIndicator, PaperProvider, Text } from 'react-native-paper';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
@@ -23,10 +23,20 @@ export default function RootLayout() {
   const settingsLoaded = useSettingsStore((s) => s.loaded);
   const loadSettings = useSettingsStore((s) => s.load);
 
+  const [bootError, setBootError] = useState<string | null>(null);
+
   useEffect(() => {
-    authInit();
-    loadSettings();
-    getDb().catch((e) => console.error('DB init failed:', e));
+    // Boot must never hard-fail: each step degrades on its own so the app
+    // always reaches the unlock screen instead of a blank splash or a crash.
+    authInit().catch((e) => {
+      console.error('Auth init failed:', e);
+      setBootError('Could not read your passcode from secure storage.');
+    });
+    loadSettings().catch((e) => console.error('Settings load failed:', e));
+    getDb().catch((e) => {
+      console.error('DB init failed:', e);
+      setBootError('Could not open the local database.');
+    });
   }, [authInit, loadSettings]);
 
   const effectiveMode =
@@ -38,6 +48,7 @@ export default function RootLayout() {
     return (
       <View style={styles.splash}>
         <ActivityIndicator size="large" color="#EB5E28" />
+        {bootError ? <Text style={styles.splashError}>{bootError}</Text> : null}
       </View>
     );
   }
@@ -63,5 +74,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#FFFCF2',
+  },
+  splashError: {
+    marginTop: 16,
+    marginHorizontal: 32,
+    textAlign: 'center',
+    color: '#8A4B2A',
+    fontSize: 13,
   },
 });

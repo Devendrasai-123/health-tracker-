@@ -47,6 +47,7 @@ export interface AlertCandidate {
   testType: string;
   value: number;
   unit: string;
+  date: string;
 }
 
 export function computeAlerts(tests: AlertCandidate[]): HealthAlert[] {
@@ -54,7 +55,7 @@ export function computeAlerts(tests: AlertCandidate[]): HealthAlert[] {
   const seen = new Map<string, AlertCandidate>();
   for (const t of tests) {
     const current = seen.get(t.testType);
-    if (!current || t.value > current.value) seen.set(t.testType, t);
+    if (!current || t.date > current.date) seen.set(t.testType, t);
   }
   for (const t of seen.values()) {
     const def = getTestTypeDef(t.testType);

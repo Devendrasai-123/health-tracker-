@@ -1,5 +1,6 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import * as SecureStore from 'expo-secure-store';
+
+import { keyValueStore } from '@/services/key-value-store';
 import type { Database } from '@/types/supabase';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL;
@@ -15,16 +16,6 @@ export function getSupabaseUrl(): string {
 
 const AUTH_STORAGE_KEY = 'sb-supabase-auth';
 
-const secureStorage: {
-  getItem: (key: string) => Promise<string | null>;
-  setItem: (key: string, value: string) => Promise<void>;
-  removeItem: (key: string) => Promise<void>;
-} = {
-  getItem: (key: string) => SecureStore.getItemAsync(key),
-  setItem: (key: string, value: string) => SecureStore.setItemAsync(key, value),
-  removeItem: (key: string) => SecureStore.deleteItemAsync(key),
-};
-
 let client: SupabaseClient<Database> | null = null;
 
 export function getSupabase(): SupabaseClient<Database> | null {
@@ -35,7 +26,7 @@ export function getSupabase(): SupabaseClient<Database> | null {
       persistSession: true,
       autoRefreshToken: true,
       detectSessionInUrl: false,
-      storage: secureStorage,
+      storage: keyValueStore,
       storageKey: AUTH_STORAGE_KEY,
     },
   });

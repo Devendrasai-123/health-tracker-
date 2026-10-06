@@ -25,15 +25,26 @@ async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   }
 }
 
+const UNREACHABLE_MESSAGE =
+  `Couldn't reach the local AI at ${GEMMA_API_URL}. ` +
+  `Start Ollama (ollama run ${GEMMA_MODEL}) and try again.`;
+
 export async function queryGemma(prompt: string): Promise<string> {
-  const res = await withTimeout(
-    fetch(GEMMA_API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: GEMMA_MODEL, prompt, stream: false }),
-    }),
-    MAX_TIMEOUT_MS,
-  );
+  let res: Awaited<ReturnType<typeof fetch>>;
+  try {
+    res = await withTimeout(
+      fetch(GEMMA_API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: GEMMA_MODEL, prompt, stream: false }),
+      }),
+      MAX_TIMEOUT_MS,
+    );
+  } catch (e) {
+    // Keep our own timeout wording; translate raw fetch/network errors.
+    if (e instanceof Error && /timed out/i.test(e.message)) throw e;
+    throw new Error(UNREACHABLE_MESSAGE);
+  }
 
   if (!res.ok) {
     throw new Error(`Gemma request failed (${res.status}). Is Ollama running?`);
@@ -45,6 +56,9 @@ export async function queryGemma(prompt: string): Promise<string> {
   if (!text) throw new Error('Gemma returned an empty response.');
   return text;
 }
+
+/** Human-readable reason the AI is unavailable, for empty/offline states. */
+export const GEMMA_OFFLINE_HINT = `Local AI is offline. ${UNREACHABLE_MESSAGE}`;
 
 export async function isGemmaAvailable(): Promise<boolean> {
   try {

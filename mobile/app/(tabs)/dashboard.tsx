@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { Button, Card, HelperText, Modal, Portal, SegmentedButtons, Text, TextInput, useTheme } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -19,6 +19,7 @@ import { calculateRecoveryScore, checkHealthAlerts, generateInsights } from '@/s
 import { useSettingsStore } from '@/stores/settings';
 import { syncLatest } from '@/services/sync-manager';
 import { palette, radii } from '@/constants/theme';
+import { validateNumber } from '@/utils/validators';
 import type { DailyMetrics, DailyMetricsInput } from '@/types';
 
 type ChartKey = 'recovery' | 'weight' | 'steps';
@@ -58,7 +59,7 @@ export default function DashboardScreen() {
   const todayCalories = caloriesByDate[today] ?? 0;
   const todayMeals = foodByDate[today] ?? [];
   const labAlerts = computeAlerts(
-    bloodTests.map((t) => ({ testType: t.testType, value: t.value, unit: t.unit })),
+    bloodTests.map((t) => ({ testType: t.testType, value: t.value, unit: t.unit, date: t.date })),
   );
   const metricAlerts = checkHealthAlerts(metrics);
   const alerts = [...metricAlerts, ...labAlerts];
@@ -104,18 +105,10 @@ export default function DashboardScreen() {
       />
 
       <View style={styles.quickActions}>
-        <Button mode="outlined" compact icon="plus" onPress={() => setShowMetrics(true)} textColor={palette.warmBlack} style={styles.chipBtn}>
-          Metrics
-        </Button>
-        <Button mode="outlined" compact icon="flask-outline" onPress={() => router.push('/(tabs)/medical')} textColor={palette.warmBlack} style={styles.chipBtn}>
-          Labs
-        </Button>
-        <Button mode="outlined" compact icon="food-apple-outline" onPress={() => router.push('/(tabs)/food')} textColor={palette.warmBlack} style={styles.chipBtn}>
-          Meal
-        </Button>
-        <Button mode="outlined" compact icon="dumbbell" onPress={() => router.push('/(tabs)/workouts')} textColor={palette.warmBlack} style={styles.chipBtn}>
-          Train
-        </Button>
+        <QuickAction icon="plus" label="Metrics" color={palette.lime} onPress={() => setShowMetrics(true)} />
+        <QuickAction icon="flask-outline" label="Labs" color={palette.lavender} onPress={() => router.push('/(tabs)/medical')} />
+        <QuickAction icon="food-apple-outline" label="Meal" color={palette.vermillion} onPress={() => router.push('/(tabs)/food')} />
+        <QuickAction icon="dumbbell" label="Train" color={palette.chromeWhite} onPress={() => router.push('/(tabs)/workouts')} />
       </View>
 
       <GlassCard style={styles.foodCard} contentStyle={styles.foodContent}>
@@ -274,6 +267,34 @@ export default function DashboardScreen() {
   );
 }
 
+function QuickAction({
+  icon,
+  label,
+  color,
+  onPress,
+}: {
+  icon: keyof typeof MaterialCommunityIcons.glyphMap;
+  label: string;
+  color: string;
+  onPress: () => void;
+}) {
+  const theme = useTheme();
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.actionTile,
+        { backgroundColor: theme.dark ? '#2A2A29' : palette.paper, opacity: pressed ? 0.72 : 1 },
+      ]}>
+      <View style={[styles.actionIcon, { backgroundColor: color }]}>
+        <MaterialCommunityIcons name={icon} size={18} color={palette.warmBlack} />
+      </View>
+      <Text style={[styles.actionLabel, { color: theme.colors.onSurface }]}>{label}</Text>
+      <MaterialCommunityIcons name="arrow-up-right" size={16} color={theme.colors.onSurfaceVariant} />
+    </Pressable>
+  );
+}
+
 interface EditDailyMetricsModalProps {
   visible: boolean;
   onDismiss: () => void;
@@ -293,6 +314,7 @@ function EditDailyMetricsModal({ visible, onDismiss, initial, onSaved }: EditDai
   const [notes, setNotes] = useState('');
   const [busy, setBusy] = useState(false);
   const [autoRecovery, setAutoRecovery] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (visible) {
@@ -305,6 +327,7 @@ function EditDailyMetricsModal({ visible, onDismiss, initial, onSaved }: EditDai
       setRecovery(initial?.recoveryScore != null ? String(initial.recoveryScore) : '');
       setNotes(initial?.notes ?? '');
       setAutoRecovery(null);
+      setError(null);
     }
   }, [visible, initial]);
 
@@ -317,19 +340,41 @@ function EditDailyMetricsModal({ visible, onDismiss, initial, onSaved }: EditDai
       sleepHours: sleep ? Number(sleep) : null,
       stress: stress ? Number(stress) : null,
       heartRate: heartRate ? Number(heartRate) : null,
+      weight: weight ? Number(weight) : null,
     });
     setAutoRecovery(computed);
-  }, [recovery, sleep, stress, heartRate]);
+  }, [recovery, sleep, stress, heartRate, weight]);
 
   const save = async () => {
-    setBusy(true);
     const heartRateValue = heartRate ? Number(heartRate) : null;
     const sleepHours = sleep ? Number(sleep) : null;
     const stressNum = stress ? Number(stress) : null;
+    const values = [
+      ['heartRate', heartRateValue],
+      ['sleepHours', sleepHours],
+      ['stress', stressNum],
+      ['weight', weight ? Number(weight) : null],
+      ['recoveryScore', recovery ? Number(recovery) : null],
+      ['steps', steps ? Number(steps) : null],
+    ] as const;
+    const invalid = values
+      .map(([key, value]) => validateNumber(key, value))
+      .find((result) => !result.valid);
+    if (invalid) {
+      setError(invalid.error ?? 'Please check the metric values.');
+      return;
+    }
+    setError(null);
+    setBusy(true);
     const manualRecovery = recovery ? Math.max(0, Math.min(100, Number(recovery))) : null;
     const recoveryScore =
       manualRecovery ??
-      calculateRecoveryScore({ sleepHours, stress: stressNum, heartRate: heartRateValue });
+      calculateRecoveryScore({
+        sleepHours,
+        stress: stressNum,
+        heartRate: heartRateValue,
+        weight: weight ? Number(weight) : null,
+      });
     const input: DailyMetricsInput = {
       date,
       heartRate: heartRateValue,
@@ -360,6 +405,9 @@ function EditDailyMetricsModal({ visible, onDismiss, initial, onSaved }: EditDai
       {autoRecovery != null ? (
         <HelperText type="info">Auto-calculated from sleep, stress and HR: {autoRecovery}</HelperText>
       ) : null}
+        <HelperText type="error" visible={!!error}>
+          {error}
+        </HelperText>
       <TextInput
         mode="outlined"
         label="Notes"
@@ -383,19 +431,38 @@ function EditDailyMetricsModal({ visible, onDismiss, initial, onSaved }: EditDai
 const styles = StyleSheet.create({
   quickActions: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
+    gap: 9,
     marginTop: 12,
   },
-  chipBtn: {
-    borderRadius: radii.pill,
-    borderColor: palette.chromeWhite,
+  actionTile: {
+    flex: 1,
+    minHeight: 82,
+    padding: 10,
+    borderRadius: radii.lg,
+    justifyContent: 'space-between',
+    shadowColor: palette.warmBlack,
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 1,
+  },
+  actionIcon: {
+    width: 30,
+    height: 30,
+    borderRadius: radii.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actionLabel: {
+    fontSize: 12,
+    fontWeight: '900',
+    marginTop: 8,
   },
   foodCard: { marginTop: 12 },
   foodContent: { paddingVertical: 14 },
   foodRow: { flexDirection: 'row', justifyContent: 'space-around' },
-  metaLabel: { fontSize: 12, fontWeight: '600' },
-  metaValue: { fontSize: 24, fontWeight: '800', letterSpacing: -0.4, marginTop: 2 },
+  metaLabel: { fontSize: 10, fontWeight: '900', letterSpacing: 1 },
+  metaValue: { fontSize: 26, fontWeight: '900', letterSpacing: -0.7, marginTop: 3 },
   metaUnit: { fontSize: 12, fontWeight: '500' },
   recentSection: { marginTop: 16 },
   chartSection: { marginTop: 20 },

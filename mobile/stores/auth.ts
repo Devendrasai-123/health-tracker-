@@ -25,12 +25,25 @@ export const useAuthStore = create<AuthState>((set) => ({
   error: null,
 
   init: async () => {
-    const initialized = await encryptionService.isInitialized();
-    set({
-      status: initialized ? 'locked' : 'uninitialized',
-      bootstrapped: true,
-      error: null,
-    });
+    try {
+      const initialized = await encryptionService.isInitialized();
+      set({
+        status: initialized ? 'locked' : 'uninitialized',
+        bootstrapped: true,
+        error: null,
+      });
+    } catch (e) {
+      // Never leave the app unbootable because key storage failed.
+      console.error('Auth init failed:', e);
+      set({
+        status: 'uninitialized',
+        bootstrapped: true,
+        error:
+          e instanceof Error
+            ? e.message
+            : 'Secure storage is unavailable on this device.',
+      });
+    }
   },
 
   setup: async (password) => {

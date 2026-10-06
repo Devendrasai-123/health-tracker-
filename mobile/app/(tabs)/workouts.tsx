@@ -25,6 +25,7 @@ import { useDataStore } from '@/stores/data';
 import { addWorkout, deleteWorkout, updateWorkout } from '@/services/workout-service';
 import { GlassCard } from '@/components/GlassCard';
 import { palette, radii } from '@/constants/theme';
+import { validateNumber } from '@/utils/validators';
 import type { WorkoutEntry, WorkoutInput } from '@/types';
 
 export default function WorkoutsScreen() {
@@ -192,13 +193,25 @@ function AddWorkoutModal({ visible, initial, onDismiss, onSaved }: AddWorkoutMod
       setError('Enter an activity name.');
       return;
     }
+    const durationValue = duration ? Number(duration) : null;
+    const caloriesValue = calories ? Number(calories) : null;
+    const durationValidation = validateNumber('durationMin', durationValue);
+    const caloriesValidation = validateNumber('calories', caloriesValue);
+    if (!durationValidation.valid) {
+      setError(durationValidation.error ?? 'Invalid duration.');
+      return;
+    }
+    if (!caloriesValidation.valid) {
+      setError(caloriesValidation.error ?? 'Invalid calories.');
+      return;
+    }
     setBusy(true);
     const input: WorkoutInput = {
       date,
       name: name.trim(),
-      durationMin: duration ? Number(duration) : null,
+      durationMin: durationValue,
       intensity,
-      calories: calories ? Number(calories) : null,
+      calories: caloriesValue,
       notes: notes || null,
     };
     if (initial) {

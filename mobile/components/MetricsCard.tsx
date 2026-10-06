@@ -45,7 +45,11 @@ function MetricCell({
 export function MetricsCard({ heartRate, steps, sleepHours, stress }: MetricsCardProps) {
   return (
     <GlassCard style={styles.card} contentStyle={styles.content}>
-      <View style={styles.row}>
+      <View style={styles.header}>
+        <Text style={styles.eyebrow}>BODY SIGNALS</Text>
+        <MaterialCommunityIcons name="arrow-top-right" size={18} color={palette.vermillion} />
+      </View>
+      <View style={styles.grid}>
         <MetricCell
           icon="heart-outline"
           label="Heart"
@@ -76,18 +80,20 @@ export function MetricsCard({ heartRate, steps, sleepHours, stress }: MetricsCar
 
 const styles = StyleSheet.create({
   card: { marginTop: 12 },
-  content: { paddingVertical: 14 },
-  row: { flexDirection: 'row', justifyContent: 'space-between' },
-  cell: { flex: 1, alignItems: 'center' },
+  content: { paddingVertical: 16 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
+  eyebrow: { color: palette.masala, fontSize: 10, fontWeight: '900', letterSpacing: 1.4 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', rowGap: 18 },
+  cell: { width: '50%', alignItems: 'flex-start', paddingLeft: 4 },
   icon: {
     width: 30,
     height: 30,
     borderRadius: radii.sm,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 6,
+    marginBottom: 7,
   },
-  label: { fontSize: 11, fontWeight: '600', marginBottom: 2 },
-  value: { fontSize: 18, fontWeight: '800', letterSpacing: -0.3 },
+  label: { fontSize: 11, fontWeight: '700', marginBottom: 2 },
+  value: { fontSize: 22, fontWeight: '900', letterSpacing: -0.5 },
   unit: { fontSize: 11, fontWeight: '500' },
 });
