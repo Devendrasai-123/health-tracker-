@@ -83,6 +83,11 @@ export default function TabLayout() {
         name="calendar"
         options={{ title: 'Calendar', tabBarIcon: tabIcon('calendar-month-outline') }}
       />
+      <Tabs.Screen
+        name="profile"
+        options={{ title: 'Profile', tabBarIcon: tabIcon('account-star-outline') }}
+      />
+      <Tabs.Screen name="shop" options={{ title: 'Shop', tabBarIcon: tabIcon('store-outline') }} />
 
       {/* Legacy screens kept for deep links / reuse — hidden from tab bar */}
       <Tabs.Screen name="dashboard" options={{ href: null }} />

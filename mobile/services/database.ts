@@ -264,6 +264,58 @@ const MIGRATIONS: string[] = [
     share_with_parents INTEGER NOT NULL DEFAULT 0
   );
   `,
+  // v5 — ranks, achievements, points, and rewards
+  `
+  CREATE TABLE IF NOT EXISTS user_ranks (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL UNIQUE,
+    current_rank INTEGER NOT NULL DEFAULT 1,
+    total_points INTEGER NOT NULL DEFAULT 0,
+    rank_name TEXT NOT NULL DEFAULT 'Bronze',
+    weekly_points INTEGER NOT NULL DEFAULT 0,
+    monthly_points INTEGER NOT NULL DEFAULT 0,
+    best_streak INTEGER NOT NULL DEFAULT 0,
+    current_streak INTEGER NOT NULL DEFAULT 0,
+    last_activity_date TEXT,
+    rank_updated_at TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE TABLE IF NOT EXISTS achievements (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    achievement_name TEXT NOT NULL,
+    description TEXT,
+    points_reward INTEGER NOT NULL DEFAULT 0,
+    badge_icon TEXT,
+    is_completed INTEGER NOT NULL DEFAULT 0,
+    progress_current INTEGER NOT NULL DEFAULT 0,
+    progress_target INTEGER,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE TABLE IF NOT EXISTS rewards_shop (
+    id TEXT PRIMARY KEY,
+    reward_name TEXT NOT NULL,
+    description TEXT,
+    reward_type TEXT NOT NULL,
+    points_cost INTEGER NOT NULL,
+    icon TEXT,
+    unlock_rank INTEGER NOT NULL DEFAULT 1,
+    is_limited_time INTEGER NOT NULL DEFAULT 0,
+    expiry_date TEXT,
+    stock INTEGER NOT NULL DEFAULT -1,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE TABLE IF NOT EXISTS user_purchases (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    reward_id TEXT NOT NULL,
+    points_spent INTEGER NOT NULL,
+    purchased_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+  `,
 ];
 
 let db: SQLite.SQLiteDatabase | null = null;
@@ -315,6 +367,10 @@ export async function resetDatabase(): Promise<void> {
     DROP TABLE IF EXISTS travel_trips;
     DROP TABLE IF EXISTS travel_stops;
     DROP TABLE IF EXISTS travel_live;
+    DROP TABLE IF EXISTS user_purchases;
+    DROP TABLE IF EXISTS rewards_shop;
+    DROP TABLE IF EXISTS achievements;
+    DROP TABLE IF EXISTS user_ranks;
   `);
   await fresh.closeAsync();
   db = null;
